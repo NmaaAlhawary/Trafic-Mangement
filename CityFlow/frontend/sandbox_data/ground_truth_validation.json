@@ -1,0 +1,33 @@
+{
+  "validation_windows": [
+    {
+      "video": "sense02.mp4",
+      "start_time_s": 14,
+      "end_time_s": 31,
+      "labels": [
+        "congestion-event",
+        "queue-spillback-marker"
+      ],
+      "notes": "Eastbound queue extends beyond stop line and occupies upstream lane."
+    },
+    {
+      "video": "sense02.mp4",
+      "start_time_s": 43,
+      "end_time_s": 57,
+      "labels": [
+        "abnormal-stopping",
+        "incident-label"
+      ],
+      "notes": "One vehicle remains stationary in the conflict zone for multiple cycles."
+    },
+    {
+      "video": "sense01.mp4",
+      "start_time_s": 20,
+      "end_time_s": 34,
+      "labels": [
+        "unexpected-trajectory"
+      ],
+      "notes": "Vehicle performs non-standard lateral movement across the monitored approach."
+    }
+  ]
+}

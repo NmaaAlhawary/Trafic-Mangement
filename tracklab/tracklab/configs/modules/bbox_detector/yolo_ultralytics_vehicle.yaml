@@ -1,0 +1,13 @@
+_target_: tracklab.wrappers.bbox_detector.yolo_ultralytics_api.YOLOUltralytics
+batch_size: 8
+cfg:
+  path_to_checkpoint: "${model_dir}/yolo/yolo26m.pt"
+  min_confidence: 0.35
+  # COCO vehicle classes:
+  # 2=car, 3=motorcycle, 5=bus, 7=truck
+  allowed_classes: [2, 3, 5, 7]
+  category_id_map:
+    2: 2
+    3: 3
+    5: 5
+    7: 7

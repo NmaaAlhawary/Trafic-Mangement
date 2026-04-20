@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Traffic Sandbox</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="spinner.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/4.8.2/pixi.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi-viewport@4.2.3/dist/viewport.min.js"></script>
+    <link rel="stylesheet" href="http://cdn.jsdelivr.net/chartist.js/latest/chartist.min.css">
+    <script src="http://cdn.jsdelivr.net/chartist.js/latest/chartist.min.js"></script>
+    <script src="Point.js"></script>
+</head>
+
+<body class="noselect">
+<div class="sandbox-shell">
+    <aside class="status-panel sandbox-sidebar">
+        <div class="sidebar-block">
+            <div class="eyebrow">Phase 1</div>
+            <h1 class="sidebar-title">Traffic Data Sandbox</h1>
+            <p class="sidebar-copy">Combined CityFlow replay, CCTV-like stream, and reusable site data packs for model development, tuning, and validation.</p>
+        </div>
+
+        <div class="sidebar-block metrics-block">
+            <div class="metric-card">
+                <div class="metric-label">Vehicles</div>
+                <div class="metric-value" id="car-num">0</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Replay Step</div>
+                <div class="metric-value" id="current-step-num">0</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Selected</div>
+                <div class="metric-value metric-small" id="selected-entity">None</div>
+            </div>
+        </div>
+
+        <div class="sidebar-block">
+            <div class="section-title">Replay Controls</div>
+            <button class="btn btn-success btn-sm btn-block mb-2" id="load-demo-btn">Load Sandbox Demo</button>
+            <button class="btn btn-outline-light btn-sm btn-block mb-3" id="load-realmap-btn">Load Real Map</button>
+            <div id="file-upload">
+                <div class="custom-file mb-3">
+                    <input class="custom-file-input" type="file" id="roadnet-file">
+                    <label class="custom-file-label" for="roadnet-file" id="roadnet-label">Roadnet File</label>
+                </div>
+                <div class="custom-file mb-3">
+                    <input class="custom-file-input" type="file" id="replay-file">
+                    <label class="custom-file-label" for="replay-file" id="replay-label">Replay File</label>
+                </div>
+                <div class="custom-file mb-3">
+                    <input class="custom-file-input" type="file" id="chart-file">
+                    <label class="custom-file-label" for="chart-file" id="chart-label">Chart File (Optional)</label>
+                </div>
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="custom-control custom-checkbox">
+                        <input class="custom-control-input" type="checkbox" id="debug-mode" />
+                        <label class="custom-control-label" for="debug-mode">Debug</label>
+                    </div>
+                    <button class="btn btn-outline-light btn-sm" id="start-btn">Start</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-block">
+            <div class="section-title">Playback</div>
+            <div class="d-flex justify-content-between align-items-center text-uppercase small text-muted">
+                <span>Replay Speed</span>
+                <span id="replay-speed">0</span>
+            </div>
+            <div class="row no-gutters align-items-center mt-2">
+                <div class="col-1 text-center">
+                    <span class="fas fa-minus control-icon" id="slow-btn"></span>
+                </div>
+                <div class="col-10 px-2">
+                    <input type="range" class="custom-range" id="replay-control">
+                </div>
+                <div class="col-1 text-center">
+                    <span class="fas fa-plus control-icon" id="fast-btn"></span>
+                </div>
+            </div>
+            <button class="btn btn-outline-light btn-sm btn-block mt-3" id="pause">Pause</button>
+        </div>
+
+        <div class="sidebar-block">
+            <div class="section-title">Sandbox Assets</div>
+            <div class="asset-links">
+                <a href="sandbox_data/detector_counts_15min.csv" target="_blank">Detector counts</a>
+                <a href="sandbox_data/signal_timing_log.csv" target="_blank">Signal timing log</a>
+                <a href="sandbox_data/intersection_metadata.json" target="_blank">Intersection metadata</a>
+                <a href="sandbox_data/ground_truth_validation.json" target="_blank">Ground truth windows</a>
+                <a href="sandbox_data/historical_pack_manifest.json" target="_blank">Historical pack manifest</a>
+                <a href="testdata/real_map_roadnet.json" target="_blank">Real map roadnet</a>
+            </div>
+        </div>
+
+        <div class="sidebar-block">
+            <div class="section-title">Info Box</div>
+            <div id="info" class="info-box"></div>
+        </div>
+    </aside>
+
+    <main class="sandbox-main">
+        <section class="hero-row">
+            <div class="hero-card replay-card">
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-eyebrow">Microsimulation</div>
+                        <div class="panel-title">CityFlow Replay</div>
+                    </div>
+                    <div class="panel-meta" id="progress-percentage">0%</div>
+                </div>
+                <div id="simulator-canvas" class="panel-body">
+                    <div id="spinner" class="spinner d-none">
+                        <div class="rect1"></div>
+                        <div class="rect2"></div>
+                        <div class="rect3"></div>
+                        <div class="rect4"></div>
+                        <div class="rect5"></div>
+                    </div>
+                    <div id="guide" class="guide-panel">
+                        <h5>Quick Start</h5>
+                        <ul>
+                            <li>Use <b>Load Sandbox Demo</b> for the packaged replay.</li>
+                            <li>Or upload replay roadnet JSON and replay TXT manually.</li>
+                            <li>Press <b>Start</b> to play the simulation.</li>
+                            <li>Keyboard: <b>P</b> pause, <b>[</b> back, <b>]</b> forward.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div id="chart-container" class="chart-panel d-none">
+                    <div id="chart-title">Real-time Chart</div>
+                    <div id="chart" class="ct-chart"></div>
+                </div>
+            </div>
+
+            <div class="hero-card cctv-card">
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-eyebrow">Live-Like Feed</div>
+                        <div class="panel-title">CCTV / Detection Stream</div>
+                    </div>
+                    <div class="panel-meta">RTSP-style @ 5-15 FPS</div>
+                </div>
+                <div class="cctv-frame">
+                    <img id="cctv-stream" src="http://127.0.0.1:8010/video_feed" alt="CCTV stream">
+                </div>
+                <div class="cctv-footer">
+                    <span id="cctv-status">Source: 127.0.0.1:8010</span>
+                    <a href="http://127.0.0.1:8010/" target="_blank">Open stream</a>
+                </div>
+            </div>
+        </section>
+
+        <section class="dataset-grid">
+            <article class="dataset-card">
+                <div class="panel-header compact">
+                    <div>
+                        <div class="panel-eyebrow">6.3</div>
+                        <div class="panel-title small">Detector Count Dataset</div>
+                    </div>
+                    <div class="panel-meta">22 detectors / 15 min</div>
+                </div>
+                <div class="table-scroll">
+                    <table class="table table-sm sandbox-table" id="detector-table"></table>
+                </div>
+            </article>
+
+            <article class="dataset-card">
+                <div class="panel-header compact">
+                    <div>
+                        <div class="panel-eyebrow">6.4</div>
+                        <div class="panel-title small">Signal Timing Logs</div>
+                    </div>
+                    <div class="panel-meta">Event log format</div>
+                </div>
+                <div class="table-scroll">
+                    <table class="table table-sm sandbox-table" id="signal-table"></table>
+                </div>
+            </article>
+
+            <article class="dataset-card">
+                <div class="panel-header compact">
+                    <div>
+                        <div class="panel-eyebrow">6.5</div>
+                        <div class="panel-title small">Intersection Metadata</div>
+                    </div>
+                    <div class="panel-meta">Camera / lanes / zones</div>
+                </div>
+                <pre class="json-preview" id="metadata-preview"></pre>
+            </article>
+
+            <article class="dataset-card">
+                <div class="panel-header compact">
+                    <div>
+                        <div class="panel-eyebrow">6.6</div>
+                        <div class="panel-title small">Ground Truth Windows</div>
+                    </div>
+                    <div class="panel-meta">Validation layer</div>
+                </div>
+                <div id="groundtruth-list" class="groundtruth-list"></div>
+            </article>
+        </section>
+    </main>
+</div>
+
+<script src="script.js"></script>
+</body>
+
+</html>

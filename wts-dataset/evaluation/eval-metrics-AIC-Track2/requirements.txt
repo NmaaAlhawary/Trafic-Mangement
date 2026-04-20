@@ -1,0 +1,3 @@
+ftfy
+nltk>=3.8
+rouge-score

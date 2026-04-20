@@ -1,0 +1,151 @@
+{
+  "intersection_id": "INT-001",
+  "site_name": "Phase 1 Traffic Sandbox",
+  "camera": {
+    "camera_id": "WTS CAM 02",
+    "stream_url": "http://127.0.0.1:8010/video_feed",
+    "location": {
+      "x": 0,
+      "y": -65,
+      "height_m": 12.5
+    },
+    "field_of_view_deg": 78,
+    "frame_size": [
+      1920,
+      1080
+    ],
+    "ingest_fps_range": [
+      5,
+      15
+    ],
+    "codec_assumption": "H.264/H.265"
+  },
+  "lane_configurations": [
+    {
+      "approach": "North",
+      "lanes": [
+        "N-1 through",
+        "N-2 through",
+        "N-3 left"
+      ]
+    },
+    {
+      "approach": "East",
+      "lanes": [
+        "E-1 through",
+        "E-2 through",
+        "E-3 right"
+      ]
+    },
+    {
+      "approach": "South",
+      "lanes": [
+        "S-1 through",
+        "S-2 through",
+        "S-3 left"
+      ]
+    },
+    {
+      "approach": "West",
+      "lanes": [
+        "W-1 through",
+        "W-2 through",
+        "W-3 right"
+      ]
+    }
+  ],
+  "stop_lines": {
+    "North": [
+      698,
+      520,
+      760,
+      520
+    ],
+    "East": [
+      890,
+      700,
+      890,
+      760
+    ],
+    "South": [
+      698,
+      900,
+      760,
+      900
+    ],
+    "West": [
+      520,
+      700,
+      520,
+      760
+    ]
+  },
+  "monitoring_zones": [
+    {
+      "zone_id": "Q-N",
+      "type": "queue_spillback",
+      "points": [
+        [
+          640,
+          150
+        ],
+        [
+          820,
+          150
+        ],
+        [
+          820,
+          460
+        ],
+        [
+          640,
+          460
+        ]
+      ]
+    },
+    {
+      "zone_id": "Q-E",
+      "type": "queue_spillback",
+      "points": [
+        [
+          920,
+          640
+        ],
+        [
+          1280,
+          640
+        ],
+        [
+          1280,
+          820
+        ],
+        [
+          920,
+          820
+        ]
+      ]
+    },
+    {
+      "zone_id": "INC-BOX",
+      "type": "incident_core",
+      "points": [
+        [
+          620,
+          620
+        ],
+        [
+          860,
+          620
+        ],
+        [
+          860,
+          860
+        ],
+        [
+          620,
+          860
+        ]
+      ]
+    }
+  ]
+}

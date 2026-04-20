@@ -1,0 +1,23 @@
+{
+  "objective": "Traffic Data Sandbox Build",
+  "scope": [
+    "CCTV-like input environment",
+    "Historical CCTV training/calibration pack",
+    "Detector count dataset",
+    "Signal timing logs",
+    "Intersection metadata",
+    "Ground truth and annotation layer"
+  ],
+  "historical_pack": [
+    {
+      "filename": "sense01.mp4",
+      "role": "training/calibration",
+      "notes": "Representative CCTV-like clip for Phase 1 sandbox testing."
+    },
+    {
+      "filename": "sense02.mp4",
+      "role": "training/calibration",
+      "notes": "Representative CCTV-like clip for Phase 1 sandbox testing."
+    }
+  ]
+}
