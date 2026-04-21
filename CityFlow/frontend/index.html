@@ -121,29 +121,34 @@
 
   <main class="main">
     <div class="top-row">
-      <div class="panel">
+      <div class="panel map-panel">
         <div class="panel-head">
           <div class="panel-head-left">
-            <div class="panel-eyebrow">6.1 · WTS CAM 02 · sense02.mp4</div>
-            <div class="panel-title">CCTV Live Feed</div>
+            <div class="panel-eyebrow">CAM-01 NORTH · sense02.mp4</div>
+            <div class="panel-title">CCTV Live Feed — Full View</div>
           </div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <span class="pill pill-green">RTSP-style</span>
-            <span class="pill pill-blue">1920×1080</span>
+            <span class="pill pill-blue">1280×720</span>
             <span class="pill pill-blue">H.264 · 10 FPS</span>
           </div>
         </div>
         <div class="cctv-body">
           <img id="cctv-stream" src="" alt="CCTV stream" />
+          <video id="cctv-video" class="is-hidden" muted autoplay loop playsinline preload="auto"></video>
+          <canvas id="cctv-overlay-canvas" class="cctv-overlay-canvas"></canvas>
+          <div class="cctv-top-badge">
+            <span class="cctv-dot"></span>LIVE · INT-001 · sense02
+          </div>
           <div class="cctv-overlay">
-            <span><span class="cctv-dot"></span>LIVE · INT-001</span>
-            <span id="cctv-status">Connecting…</span>
+            <span id="cctv-status-anchor"></span>
+            <span id="cctv-status"></span>
             <a id="cctv-link" href="#" target="_blank" style="color:var(--accent);font-size:11px;text-decoration:none">↗ Full screen</a>
           </div>
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel replay-panel">
         <div class="panel-head">
           <div class="panel-head-left">
             <div class="panel-eyebrow">Microsimulation · CityFlow</div>
@@ -151,15 +156,82 @@
           </div>
           <span class="pill pill-purple" id="sim-progress">0%</span>
         </div>
-        <div class="sim-body">
-          <div id="simulator-canvas"></div>
-          <div id="spinner"><div class="spin-ring"></div></div>
-          <div class="guide-overlay" id="guide">
-            <div class="guide-box">
-              <h4>CityFlow Replay</h4>
-              <p>Click <strong style="color:var(--accent)">▶ Load Sandbox Demo</strong> in the sidebar to start the microsimulation, or upload custom files above.</p>
+        <div class="replay-studio">
+          <div class="sim-shell">
+            <div class="sim-body">
+              <div id="simulator-canvas"></div>
+              <iframe
+                id="realmap-frame"
+                class="realmap-frame d-none"
+                loading="lazy"
+                referrerpolicy="no-referrer-when-downgrade"
+                allowfullscreen
+                title="Wadi Saqra Google Map"
+              ></iframe>
+              <div id="spinner"><div class="spin-ring"></div></div>
+              <div class="guide-overlay" id="guide">
+                <div class="guide-box">
+                  <h4>CityFlow Replay</h4>
+                  <p>Click <strong style="color:var(--accent)">▶ Load Sandbox Demo</strong> in the sidebar to start the microsimulation, or upload custom files above.</p>
+                </div>
+              </div>
             </div>
           </div>
+        </div>
+        <section id="map-traffic-card" class="map-traffic-card d-none">
+          <div class="map-traffic-head">
+            <div>
+              <div class="map-traffic-eyebrow">Wadi Saqra Flow</div>
+              <div class="map-traffic-title">Traffic Load Trend</div>
+            </div>
+            <div id="map-traffic-kpi" class="map-traffic-kpi">-- vehicles / 15 min</div>
+          </div>
+          <div class="map-traffic-chart-wrap">
+            <canvas id="map-traffic-chart"></canvas>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Camera Grid row -->
+    <div class="camera-grid-row">
+      <div class="panel camera-grid-panel">
+        <div class="panel-head">
+          <div class="panel-head-left">
+            <div class="panel-eyebrow">Multi-Camera · 4 Live Feeds</div>
+            <div class="panel-title">Junction Camera Grid</div>
+          </div>
+          <span class="pill pill-green">Live</span>
+        </div>
+        <div class="cam-grid">
+          <section class="junction-cam">
+            <div class="cam-seg-label">
+              <span class="cam-live-dot"></span>CAM-01 · North
+              <span class="cam-seg-badge">video02</span>
+            </div>
+            <video class="junction-cam-video" data-cam="north" data-segment="tl" muted autoplay loop playsinline preload="auto"></video>
+          </section>
+          <section class="junction-cam">
+            <div class="cam-seg-label">
+              <span class="cam-live-dot"></span>CAM-02 · South
+              <span class="cam-seg-badge">video02</span>
+            </div>
+            <video class="junction-cam-video" data-cam="south" data-segment="tr" muted autoplay loop playsinline preload="auto"></video>
+          </section>
+          <section class="junction-cam">
+            <div class="cam-seg-label">
+              <span class="cam-live-dot"></span>CAM-03 · East
+              <span class="cam-seg-badge">video02</span>
+            </div>
+            <video class="junction-cam-video" data-cam="east" data-segment="bl" muted autoplay loop playsinline preload="auto"></video>
+          </section>
+          <section class="junction-cam">
+            <div class="cam-seg-label">
+              <span class="cam-live-dot"></span>CAM-04 · West
+              <span class="cam-seg-badge">video02</span>
+            </div>
+            <video class="junction-cam-video" data-cam="west" data-segment="br" muted autoplay loop playsinline preload="auto"></video>
+          </section>
         </div>
       </div>
     </div>

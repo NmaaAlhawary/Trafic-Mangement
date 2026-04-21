@@ -260,7 +260,7 @@ async function hydrate() {
     // Tables
     renderTable(
       document.getElementById('detector-table'), detRows,
-      ['timestamp','detector_id','approach','lane_label','vehicle_count','avg_speed_kmh','source']
+      ['timestamp','detector_id','approach','lane_label','vehicle_count','avg_speed_kmh']
     );
     renderTable(
       document.getElementById('signal-table'), sigRows,
