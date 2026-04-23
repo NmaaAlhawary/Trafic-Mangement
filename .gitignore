@@ -19,3 +19,6 @@ dist/
 
 # Large binary/compiled files
 *.abi3.so
+
+# Generated project output
+Smart-Traffic-Management-System/server/bin/
