@@ -85,6 +85,47 @@ var realMapFrame = document.getElementById("realmap-frame");
 var mapTrafficCard = document.getElementById("map-traffic-card");
 var mapTrafficKpi = document.getElementById("map-traffic-kpi");
 var simProgressBadge = document.getElementById("sim-progress");
+var mainShell = document.querySelector(".shell");
+var smartTrafficApp = document.getElementById("smart-traffic-app");
+var smartPageTitle = document.getElementById("smart-page-title");
+var smartPageSub = document.getElementById("smart-page-sub");
+var smartBackButton = document.getElementById("smart-back-btn");
+var smartNavItems = Array.from(document.querySelectorAll(".smart-nav-item"));
+var smartViews = Array.from(document.querySelectorAll(".smart-view"));
+var smartThemeButtons = Array.from(document.querySelectorAll(".smart-theme-btn"));
+var smartMetricRefs = {
+    totalVehicles: document.getElementById("smart-total-vehicles"),
+    congestionIndex: document.getElementById("smart-congestion-index"),
+    peakBanner: document.getElementById("smart-peak-banner"),
+    efficiency: document.getElementById("smart-efficiency"),
+    currentFlow: document.getElementById("smart-current-flow"),
+    waitTime: document.getElementById("smart-wait-time"),
+    decisionSpeed: document.getElementById("smart-decision-speed"),
+    responseTime: document.getElementById("smart-response-time"),
+    health: document.getElementById("smart-health"),
+    weatherTemp: document.getElementById("smart-weather-temp"),
+    monitorVehicles: document.getElementById("smart-monitor-vehicles"),
+    monitorWait: document.getElementById("smart-monitor-wait"),
+    monitorEfficiency: document.getElementById("smart-monitor-efficiency"),
+    analyticsVolume: document.getElementById("smart-analytics-volume"),
+    analyticsCongestion: document.getElementById("smart-analytics-congestion"),
+    statusCpu: document.getElementById("smart-status-cpu"),
+    statusMemory: document.getElementById("smart-status-memory"),
+    statusNetwork: document.getElementById("smart-status-network"),
+    timingNS: document.getElementById("smart-timing-ns"),
+    timingEW: document.getElementById("smart-timing-ew"),
+    signalNorth: document.getElementById("smart-signal-north"),
+    signalSouth: document.getElementById("smart-signal-south"),
+    signalEast: document.getElementById("smart-signal-east"),
+    signalWest: document.getElementById("smart-signal-west"),
+    barNS: document.getElementById("smart-bar-ns"),
+    barEW: document.getElementById("smart-bar-ew"),
+    vehicleBreakdown: document.getElementById("smart-vehicle-breakdown"),
+    visibility: document.getElementById("smart-visibility"),
+    weatherText: document.getElementById("smart-weather-text"),
+    temperature: document.getElementById("smart-temperature"),
+    wind: document.getElementById("smart-wind")
+};
 
 var SPEED = 3, SCALE_SPEED = 1.01;
 var LEFT = 37, UP = 38, RIGHT = 39, DOWN = 40;
@@ -125,29 +166,138 @@ let chartData = [];
 let activeMapMode = "simulation";
 let cctvDetectionFrames = new Map();
 let cctvDetectionAnimation = null;
+let cctvStatsPollTimer = null;
+let cctvStatsFailureCount = 0;
+let smartTrafficMetricsTimer = null;
+let liveCameraStats = {};
+let liveDetectorHistory = [];
 let cctvDetectionState = {
     fps: 10,
-    sourceWidth: 1920,
-    sourceHeight: 1080,
-    sourceName: "sense02.mp4",
+    sourceWidth: 1280,
+    sourceHeight: 720,
+    sourceName: "sense05.mov",
     loaded: false
 };
 let mapTrafficChart = null;
 let mapTrafficSeries = { labels: [], values: [], cursor: 0, timer: null, windowSize: 8 };
+let liveTrafficSeries = [];
+let liveIncidentState = {
+    online: false,
+    total: 0,
+    highestConfidence: 0,
+    activeEvents: []
+};
+let incidentHealthState = null;
+let smartTrafficState = {
+    initialized: false,
+    currentView: "monitoring",
+    theme: "light",
+    metrics: {
+        totalVehicles: 1247,
+        congestionIndex: 0.12,
+        currentFlow: 609,
+        waitMinutes: 3.2,
+        efficiency: 85.1,
+        decisionSpeed: 151,
+        health: 98.4,
+        peakBannerText: "Next peak prediction: 17:15 (High volume expected)",
+        cpu: 27,
+        memory: 85,
+        network: 0,
+        timingNS: 4,
+        timingEW: 4,
+        signalNorth: 4,
+        signalSouth: 4,
+        signalEast: 4,
+        signalWest: 3,
+        barNS: 32,
+        barEW: 28,
+        weatherText: "Sunny",
+        weatherTemp: 31.0,
+        wind: 0.0,
+        visibility: 0.0,
+        vehicleBreakdown: {
+            Cars: 156,
+            Trucks: 23,
+            Buses: 8,
+            Motorcycles: 12
+        }
+    }
+};
+
+window.addEventListener("incident-summary", function(event) {
+    const detail = event.detail || {};
+    liveIncidentState.online = !!detail.online;
+    liveIncidentState.total = Number(detail.total) || 0;
+    liveIncidentState.highestConfidence = Number(detail.highestConfidence) || 0;
+    liveIncidentState.activeEvents = Array.isArray(detail.activeEvents) ? detail.activeEvents : [];
+    renderSmartTrafficMetrics();
+});
+
+window.addEventListener("incident-health", function(event) {
+    incidentHealthState = event.detail || null;
+    renderSmartTrafficMetrics();
+});
 
 const GOOGLE_MAP_URL = "https://www.google.com/maps/embed?pb=!1m28!1m12!1m3!1d1279.8671332617787!2d35.88637445138584!3d31.96695723296919!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!4m13!3e6!4m5!1s0x151ca05b4ebccd5d%3A0x726d6db1e88866ef!2sWadi%20Saqra%20Int.%2C%20Amman!3m2!1d31.9666926!2d35.8870141!4m5!1s0x151ca05b4ebccd5d%3A0x726d6db1e88866ef!2sWadi%20Saqra%20Int.%2C%20Amman!3m2!1d31.9666926!2d35.8870141!5e1!3m2!1sen!2sjo!4v1776713852283!5m2!1sen!2sjo";
 const DETECTION_COLORS = {
+    0: "#f87171",
+    1: "#34d399",
     2: "#3ecfff",
+    3: "#a78bfa",
+    4: "#f59e0b",
     5: "#22d97a",
+    6: "#f97316",
     7: "#fbbf24"
 };
 const DETECTION_LABELS = {
+    0: "Person",
+    1: "Bicycle",
     2: "Car",
     3: "Motorbike",
+    4: "Van",
     5: "Bus",
+    6: "Train",
     7: "Truck"
 };
+const JUNCTION_CAM_CONFIG = {
+    north: { port: "8011", source: "sense01.mov", cameraId: "CAM-01 NORTH", fallbackVideo: "sense01.mov", annotationSource: "sense01.mov" },
+    south: { port: "8012", source: "sense02.mov", cameraId: "CAM-02 SOUTH", fallbackVideo: "sense02.mov", annotationSource: "sense02.mov" },
+    east:  { port: "8013", source: "sense03.mov", cameraId: "CAM-03 EAST",  fallbackVideo: "sense01.mov", annotationSource: "sense01.mov" },
+    west:  { port: "8014", source: "sense04.mov", cameraId: "CAM-04 WEST",  fallbackVideo: "sense02.mov", annotationSource: "sense02.mov" }
+};
+// Each camera clock ticks at a slightly different interval (ms) so they show different times
+const JUNCTION_CAM_CLOCK_OFFSETS = { north: 0, south: 7000, east: 23000, west: 41000 };
 const junctionCamVideos = Array.from(document.querySelectorAll(".junction-cam-video"));
+const junctionCamStats = Array.from(document.querySelectorAll("[data-cam-stats]"));
+const junctionOverlayCanvases = Array.from(document.querySelectorAll("[data-cam-overlay]"));
+let junctionStatsPollTimer = null;
+let junctionStatsDisabled = new Set();
+let junctionStatsFailureCount = {};
+let junctionDetectionAnimation = null;
+let junctionDetectionFrames = {
+    north: new Map(),
+    south: new Map(),
+    east: new Map(),
+    west: new Map()
+};
+
+function formatCamTime(cam) {
+    const d = new Date(Date.now() + (JUNCTION_CAM_CLOCK_OFFSETS[cam] || 0));
+    return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function tickCamTimestamps() {
+    ["north", "south", "east", "west"].forEach(function(cam) {
+        var t = formatCamTime(cam);
+        var el = document.getElementById("cam-time-" + cam);
+        if (el) el.textContent = t;
+        var smart = document.getElementById("smart-cam-ts-" + cam);
+        if (smart) smart.textContent = t;
+    });
+}
+tickCamTimestamps();
+setInterval(tickCamTimestamps, 1000);
 
 function showSimulationView() {
     activeMapMode = "simulation";
@@ -172,88 +322,375 @@ function showGoogleMapView() {
     if (mapTrafficCard) {
         mapTrafficCard.classList.remove("d-none");
     }
+    if (liveTrafficSeries.length) {
+        rebuildMapTrafficFromLiveSeries();
+    }
     startMapTrafficAnimation();
     if (nodeCanvas) {
         nodeCanvas.classList.add("d-none");
     }
 }
 
-// Map each data-cam value to a live stream port
-const CAM_PORTS = { north: "8010", south: "8011", east: "8012", west: "8013" };
-
-function syncJunctionCameraFeeds(fallbackUrl) {
+function buildJunctionBaseUrl(cam) {
+    var config = JUNCTION_CAM_CONFIG[cam];
+    if (!config) {
+        return "";
+    }
     var host = window.location.hostname || "127.0.0.1";
-    junctionCamVideos.forEach(function(video, index) {
-        if (!video) return;
-        var cam = video.dataset.cam;
-        var port = CAM_PORTS[cam];
-        // Try live stream first; fall back to video file if stream unavailable
-        if (port) {
-            var streamUrl = "http://" + host + ":" + port + "/video_feed";
-            // Use an img probe to test if the stream is alive
-            var probe = new Image();
-            probe.onload = function() {
-                // Stream is alive — switch to <img> style stream via the video's poster trick
-                // We can't use <img> inside <video>, so just set the src to the stream URL
-                // (MJPEG streams work as video src in most browsers)
-                if (video.dataset.src !== streamUrl) {
-                    video.src = streamUrl;
-                    video.dataset.src = streamUrl;
-                }
-                video.play().catch(function() {});
-            };
-            probe.onerror = function() {
-                // Stream not available — use fallback video with offset
-                if (video.dataset.src !== fallbackUrl) {
-                    video.src = fallbackUrl;
-                    video.dataset.src = fallbackUrl;
-                    video.currentTime = Math.min(index * 0.7, 2.1);
-                }
-                video.playbackRate = 0.9;
-                video.play().catch(function() {});
-            };
-            probe.src = streamUrl;
-        } else {
-            if (video.dataset.src !== fallbackUrl) {
-                video.src = fallbackUrl;
-                video.dataset.src = fallbackUrl;
-                video.currentTime = Math.min(index * 0.7, 2.1);
-            }
-            video.playbackRate = 0.9;
-            video.play().catch(function() {});
+    return "http://" + host + ":" + config.port;
+}
+
+function buildJunctionFallbackCandidates(cam) {
+    var config = JUNCTION_CAM_CONFIG[cam];
+    if (!config) {
+        return [];
+    }
+
+    var candidates = ["testdata/demo_cctv.mp4"];
+    [config.fallbackVideo, config.source].forEach(function(candidate) {
+        if (!candidate) {
+            return;
+        }
+        candidates.push("testdata/" + candidate);
+        if (candidate.endsWith(".mov")) {
+            candidates.push("testdata/" + candidate.replace(/\.mov$/i, ".mp4"));
+        }
+    });
+
+    var seen = new Set();
+    return candidates.filter(function(url) {
+        if (!url || seen.has(url)) {
+            return false;
+        }
+        seen.add(url);
+        return true;
+    });
+}
+
+function loadMediaCandidate(node, url) {
+    return new Promise(function(resolve, reject) {
+        if (!node) {
+            reject(new Error("No media node"));
+            return;
+        }
+
+        let settled = false;
+
+        function cleanup() {
+            node.removeEventListener("loadeddata", onLoaded);
+            node.removeEventListener("load", onLoaded);
+            node.removeEventListener("error", onError);
+        }
+
+        function onLoaded() {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            resolve(url);
+        }
+
+        function onError() {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            reject(new Error("Media unavailable"));
+        }
+
+        node.addEventListener("loadeddata", onLoaded, { once: true });
+        node.addEventListener("load", onLoaded, { once: true });
+        node.addEventListener("error", onError, { once: true });
+        node.src = url;
+        if (typeof node.load === "function") {
+            node.load();
         }
     });
 }
 
-// Initialise junction cams with live streams immediately on page load
+async function mountJunctionFallbackVideo(imgNode, cam, tile) {
+    var candidates = buildJunctionFallbackCandidates(cam);
+    if (!imgNode || !imgNode.parentNode || !candidates.length) {
+        return false;
+    }
+
+    var videoNode = document.createElement("video");
+    videoNode.className = imgNode.className;
+    videoNode.dataset.cam = cam;
+    videoNode.alt = imgNode.alt;
+    videoNode.muted = true;
+    videoNode.autoplay = true;
+    videoNode.loop = true;
+    videoNode.playsInline = true;
+    videoNode.preload = "auto";
+
+    for (const candidate of candidates) {
+        try {
+            await loadMediaCandidate(videoNode, candidate);
+            imgNode.replaceWith(videoNode);
+            videoNode.play().catch(function() {});
+            if (tile) tile.classList.remove("is-offline");
+            return true;
+        } catch (error) {
+            continue;
+        }
+    }
+
+    if (tile) tile.classList.add("is-offline");
+    return false;
+}
+
 function initJunctionCameraStreams() {
-    var host = window.location.hostname || "127.0.0.1";
     junctionCamVideos.forEach(function(video) {
         if (!video) return;
         var cam = video.dataset.cam;
-        var segment = video.dataset.segment || "";
-        var port = CAM_PORTS[cam];
-        if (!port) return;
-        var streamUrl = "http://" + host + ":" + port + "/video_feed";
-        // Replace <video> with <img> for MJPEG stream display
-        var img = document.createElement("img");
-        img.src = streamUrl;
-        img.className = "junction-cam-video";
-        img.dataset.cam = cam;
-        if (segment) {
-            img.dataset.segment = segment;
-        }
-        img.alt = "CAM " + cam + " video02";
-        img.onerror = function() {
-            // If stream fails, keep the original <video> element visible with a placeholder
-            img.style.display = "none";
-            video.style.display = "block";
-        };
-        video.parentNode.insertBefore(img, video);
-        video.style.display = "none";
+        var tile = video.closest(".junction-cam");
+        var baseUrl = buildJunctionBaseUrl(cam);
+        if (!baseUrl) return;
+
+        video.addEventListener("load", function() {
+            if (tile) tile.classList.remove("is-offline");
+        });
+        video.addEventListener("error", function() {
+            mountJunctionFallbackVideo(video, cam, tile);
+        });
+
+        video.src = baseUrl + "/video_feed";
+        video.dataset.src = video.src;
+
+        // Mirror to smart dashboard cam tiles
+        var smartImg = document.getElementById("smart-cam-img-" + cam);
+        if (smartImg) smartImg.src = baseUrl + "/video_feed";
     });
 }
 initJunctionCameraStreams();
+
+function getJunctionMediaNode(cam) {
+    return document.querySelector('.junction-cam-video[data-cam="' + cam + '"]');
+}
+
+function getJunctionOverlayCanvas(cam) {
+    return document.querySelector('[data-cam-overlay="' + cam + '"]');
+}
+
+function buildJunctionDetectionSources(cam) {
+    var config = JUNCTION_CAM_CONFIG[cam];
+    var preferred = config && (config.annotationSource || config.fallbackVideo || config.source);
+    var seen = new Set();
+    return [
+        preferred,
+        config && config.source,
+        "sense02.mov",
+        "sense01.mov"
+    ].filter(function(item) {
+        if (!item || seen.has(item)) {
+            return false;
+        }
+        seen.add(item);
+        return true;
+    });
+}
+
+async function loadJunctionDetections(cam) {
+    var sourceCandidates = buildJunctionDetectionSources(cam);
+    var urls = [];
+
+    sourceCandidates.forEach(function(candidate) {
+        var baseName = candidate.replace(/\.[^.]+$/, "");
+        urls.push("testdata/" + baseName + "_tracklab_vehicle.json");
+        urls.push("sandbox_data/annotations/" + baseName + "_tracklab_vehicle.json");
+    });
+
+    for (const url of urls) {
+        try {
+            const response = await fetch(url + "?_=" + Date.now());
+            if (!response.ok) {
+                continue;
+            }
+            const payload = await response.json();
+            junctionDetectionFrames[cam] = buildDetectionFrameMap(payload);
+            return true;
+        } catch (error) {
+            continue;
+        }
+    }
+
+    junctionDetectionFrames[cam] = new Map();
+    return false;
+}
+
+function updateJunctionFrameStats(cam, items) {
+    var counts = { total: 0, car: 0, bus: 0, truck: 0 };
+    (items || []).forEach(function(item) {
+        counts.total += 1;
+        if (item.category_id === 2) counts.car += 1;
+        if (item.category_id === 5) counts.bus += 1;
+        if (item.category_id === 7) counts.truck += 1;
+    });
+
+    var statNode = junctionCamStats.find(function(item) {
+        return item.dataset.camStats === cam;
+    });
+    if (statNode) {
+        statNode.innerHTML = [
+            "<span>Total " + counts.total + "</span>",
+            "<span>Cars " + counts.car + "</span>",
+            "<span>Bus " + counts.bus + "</span>",
+            "<span>Truck " + counts.truck + "</span>"
+        ].join("");
+    }
+
+    var dashRow = document.getElementById("dash-stats-" + cam);
+    if (dashRow && junctionStatsDisabled.has(cam)) {
+        dashRow.innerHTML = [
+            "<span>Total " + counts.total + "</span>",
+            "<span>Cars " + counts.car + "</span>",
+            "<span>Bus " + counts.bus + "</span>",
+            "<span>Truck " + counts.truck + "</span>"
+        ].join("");
+    }
+}
+
+function drawJunctionDetections() {
+    Object.keys(JUNCTION_CAM_CONFIG).forEach(function(cam) {
+        var mediaNode = getJunctionMediaNode(cam);
+        var overlayCanvas = getJunctionOverlayCanvas(cam);
+        var frameMap = junctionDetectionFrames[cam];
+        if (
+            !overlayCanvas ||
+            !frameMap ||
+            frameMap.size === 0 ||
+            !mediaNode ||
+            mediaNode.tagName !== "VIDEO"
+        ) {
+            clearOverlayCanvas(overlayCanvas);
+            return;
+        }
+
+        var frameIndex = 0;
+        if (mediaNode && typeof mediaNode.currentTime === "number" && !Number.isNaN(mediaNode.currentTime)) {
+            frameIndex = Math.max(0, Math.floor(mediaNode.currentTime * cctvDetectionState.fps));
+        }
+
+        var items = frameMap.get(frameIndex) || frameMap.get(0) || [];
+        drawDetectionBoxes(
+            overlayCanvas,
+            items,
+            cctvDetectionState.sourceWidth,
+            cctvDetectionState.sourceHeight
+        );
+        updateJunctionFrameStats(cam, items);
+    });
+
+    junctionDetectionAnimation = requestAnimationFrame(drawJunctionDetections);
+}
+
+function ensureJunctionDetectionLoop() {
+    if (junctionDetectionAnimation !== null) {
+        return;
+    }
+    junctionDetectionAnimation = requestAnimationFrame(drawJunctionDetections);
+}
+
+Promise.all(Object.keys(JUNCTION_CAM_CONFIG).map(loadJunctionDetections)).finally(ensureJunctionDetectionLoop);
+
+function updateJunctionStatsCard(cam, payload) {
+    // 1. Update the camera-grid dashboard strip (main page)
+    var dashRow = document.getElementById("dash-stats-" + cam);
+    if (dashRow && payload && payload.counts) {
+        var counts = payload.counts;
+        var cells = [
+            "<span>Total " + (counts.total ?? 0) + "</span>",
+            "<span>Cars " + (counts.car ?? 0) + "</span>",
+            "<span>Bus " + (counts.bus ?? 0) + "</span>",
+            "<span>Truck " + (counts.truck ?? 0) + "</span>"
+        ].join("");
+        dashRow.innerHTML = cells;
+    }
+    // 2. Mirror into the Smart Traffic Dashboard monitoring view
+    var smartRow = document.getElementById("smart-det-" + cam);
+    if (smartRow && payload && payload.counts) {
+        var c = payload.counts;
+        smartRow.innerHTML = [
+            "<span>Total " + (c.total ?? 0) + "</span>",
+            "<span>Cars " + (c.car ?? 0) + "</span>",
+            "<span>Bus " + (c.bus ?? 0) + "</span>",
+            "<span>Truck " + (c.truck ?? 0) + "</span>"
+        ].join("");
+        // Also update aggregate smart-monitor-vehicles
+        var totalAll = ["north","south","east","west"].reduce(function(sum, k) {
+            var el = document.getElementById("smart-det-" + k);
+            if (!el) return sum;
+            var span = el.querySelector("span");
+            if (!span) return sum;
+            var val = parseInt(span.textContent.replace("Total ", "")) || 0;
+            return sum + val;
+        }, 0);
+        if (smartMetricRefs.monitorVehicles) smartMetricRefs.monitorVehicles.textContent = totalAll.toLocaleString("en-GB");
+    }
+    // 3. Mirror stream src into smart dashboard camera tiles
+    var smartImg = document.getElementById("smart-cam-img-" + cam);
+    var baseUrl = buildJunctionBaseUrl(cam);
+    if (smartImg && baseUrl && !smartImg.src.includes("/video_feed")) {
+        smartImg.src = baseUrl + "/video_feed";
+    }
+    // 4. Keep legacy in-video stat nodes updated (kept for compat)
+    var node = junctionCamStats.find(function(item) {
+        return item.dataset.camStats === cam;
+    });
+    if (!node || !payload || !payload.counts) {
+        return;
+    }
+    var counts = payload.counts;
+    node.innerHTML = [
+        "<span>Total " + (counts.total ?? 0) + "</span>",
+        "<span>Cars " + (counts.car ?? 0) + "</span>",
+        "<span>Bus " + (counts.bus ?? 0) + "</span>",
+        "<span>Truck " + (counts.truck ?? 0) + "</span>"
+    ].join("");
+}
+
+async function fetchJunctionStats(cam) {
+    if (junctionStatsDisabled.has(cam)) {
+        return;
+    }
+    var baseUrl = buildJunctionBaseUrl(cam);
+    if (!baseUrl) {
+        return;
+    }
+    try {
+        var response = await fetch(baseUrl + "/stats?_=" + Date.now());
+        if (!response.ok) {
+            throw new Error("Stats unavailable");
+        }
+        var payload = await response.json();
+        liveCameraStats[cam] = payload;
+        junctionStatsFailureCount[cam] = 0;
+        updateJunctionStatsCard(cam, payload);
+        updateSmartTrafficFromVideoStats();
+        recordLiveDetectorSnapshot();
+    } catch (error) {
+        var tile = junctionCamVideos.find(function(item) {
+            return item.dataset.cam === cam;
+        });
+        if (tile && tile.closest(".junction-cam")) {
+            tile.closest(".junction-cam").classList.add("is-offline");
+        }
+        junctionStatsFailureCount[cam] = (junctionStatsFailureCount[cam] || 0) + 1;
+        if (junctionStatsFailureCount[cam] >= 2) {
+            junctionStatsDisabled.add(cam);
+        }
+    }
+}
+
+function startJunctionStatsPolling() {
+    if (junctionStatsPollTimer !== null) {
+        window.clearInterval(junctionStatsPollTimer);
+    }
+    Object.keys(JUNCTION_CAM_CONFIG).forEach(fetchJunctionStats);
+    junctionStatsPollTimer = window.setInterval(function() {
+        Object.keys(JUNCTION_CAM_CONFIG).forEach(fetchJunctionStats);
+    }, 1000);
+}
+startJunctionStatsPolling();
 
 function clearCctvOverlay() {
     if (!cctvOverlayCanvas) {
@@ -261,6 +698,14 @@ function clearCctvOverlay() {
     }
     const context = cctvOverlayCanvas.getContext("2d");
     context.clearRect(0, 0, cctvOverlayCanvas.width, cctvOverlayCanvas.height);
+}
+
+function clearOverlayCanvas(canvas) {
+    if (!canvas) {
+        return;
+    }
+    const context = canvas.getContext("2d");
+    context.clearRect(0, 0, canvas.width, canvas.height);
 }
 
 function resizeCctvOverlay() {
@@ -276,68 +721,60 @@ function resizeCctvOverlay() {
     }
 }
 
-function normaliseDetectionPayload(payload) {
-    cctvDetectionFrames = new Map();
+function resizeOverlayCanvas(canvas) {
+    if (!canvas) {
+        return;
+    }
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.max(1, Math.round(rect.width));
+    const height = Math.max(1, Math.round(rect.height));
+    if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+    }
+}
+
+function buildDetectionFrameMap(payload) {
+    const frameMap = new Map();
     const annotations = payload && Array.isArray(payload.annotations) ? payload.annotations : [];
     annotations.forEach(function(item) {
         if (!item || typeof item.image_id !== "number" || !Array.isArray(item.bbox) || item.bbox.length < 4) {
             return;
         }
-        if ((item.score ?? 0) < 0.35) {
+        if ((item.score ?? 0) < 0.18) {
             return;
         }
-        if (!cctvDetectionFrames.has(item.image_id)) {
-            cctvDetectionFrames.set(item.image_id, []);
+        if (!frameMap.has(item.image_id)) {
+            frameMap.set(item.image_id, []);
         }
-        cctvDetectionFrames.get(item.image_id).push(item);
+        frameMap.get(item.image_id).push(item);
     });
+    return frameMap;
+}
+
+function normaliseDetectionPayload(payload) {
+    cctvDetectionFrames = buildDetectionFrameMap(payload);
     cctvDetectionState.loaded = cctvDetectionFrames.size > 0;
 }
 
-async function loadCctvDetections() {
-    const urls = [
-        "testdata/sense02_tracklab_vehicle.json",
-        "sandbox_data/annotations/sense02_tracklab_vehicle.json"
-    ];
-
-    for (const url of urls) {
-        try {
-            const response = await fetch(url + "?_=" + Date.now());
-            if (!response.ok) {
-                continue;
-            }
-            const payload = await response.json();
-            normaliseDetectionPayload(payload);
-            infoAppend("YOLO detections loaded from " + url);
-            return;
-        } catch (error) {
-            continue;
-        }
-    }
-
-    infoAppend("YOLO detections unavailable for sense02.mp4");
-}
-
-function drawCctvDetectionsForFrame(frameIndex) {
-    if (!cctvOverlayCanvas || !cctvDetectionState.loaded) {
-        clearCctvOverlay();
+function drawDetectionBoxes(canvas, frameItems, sourceWidth, sourceHeight) {
+    if (!canvas) {
         return;
     }
 
-    resizeCctvOverlay();
-    const context = cctvOverlayCanvas.getContext("2d");
-    const width = cctvOverlayCanvas.width;
-    const height = cctvOverlayCanvas.height;
-    const sx = width / cctvDetectionState.sourceWidth;
-    const sy = height / cctvDetectionState.sourceHeight;
-    const items = cctvDetectionFrames.get(frameIndex) || [];
+    resizeOverlayCanvas(canvas);
+    const context = canvas.getContext("2d");
+    const width = canvas.width;
+    const height = canvas.height;
+    const sx = width / sourceWidth;
+    const sy = height / sourceHeight;
 
     context.clearRect(0, 0, width, height);
     context.lineWidth = 2;
     context.font = "12px JetBrains Mono";
     context.textBaseline = "top";
 
-    items.forEach(function(item) {
+    (frameItems || []).forEach(function(item) {
         const bbox = item.bbox;
         const x = bbox[0] * sx;
         const y = bbox[1] * sy;
@@ -357,6 +794,65 @@ function drawCctvDetectionsForFrame(frameIndex) {
         context.fillStyle = "#031018";
         context.fillText(label, x + 6, Math.max(0, y - 18));
     });
+}
+
+function buildCctvFallbackSources(sourceVideo) {
+    var seen = new Set();
+    return [
+        sourceVideo,
+        cctvDetectionState.sourceName,
+        "sense02.mov",
+        "sense01.mov"
+    ].filter(function(item) {
+        if (!item || seen.has(item)) {
+            return false;
+        }
+        seen.add(item);
+        return true;
+    });
+}
+
+async function loadCctvDetections(sourceVideo) {
+    const sourceCandidates = buildCctvFallbackSources(sourceVideo);
+    const urls = [];
+
+    sourceCandidates.forEach(function(candidate) {
+        const baseName = candidate.replace(/\.[^.]+$/, "");
+        urls.push("testdata/" + baseName + "_tracklab_vehicle.json");
+        urls.push("sandbox_data/annotations/" + baseName + "_tracklab_vehicle.json");
+    });
+
+    for (const url of urls) {
+        try {
+            const response = await fetch(url + "?_=" + Date.now());
+            if (!response.ok) {
+                continue;
+            }
+            const payload = await response.json();
+            normaliseDetectionPayload(payload);
+            infoAppend("YOLO detections loaded from " + url);
+            return;
+        } catch (error) {
+            continue;
+        }
+    }
+
+    cctvDetectionState.loaded = false;
+    infoAppend("YOLO detections unavailable for " + (sourceVideo || cctvDetectionState.sourceName));
+}
+
+function drawCctvDetectionsForFrame(frameIndex) {
+    if (!cctvOverlayCanvas || !cctvDetectionState.loaded) {
+        clearCctvOverlay();
+        return;
+    }
+    const items = cctvDetectionFrames.get(frameIndex) || [];
+    drawDetectionBoxes(
+        cctvOverlayCanvas,
+        items,
+        cctvDetectionState.sourceWidth,
+        cctvDetectionState.sourceHeight
+    );
 }
 
 function tickCctvDetections() {
@@ -390,42 +886,10 @@ function setCctvMode(mode) {
 }
 
 function loadVideoCandidate(url) {
-    return new Promise(function(resolve, reject) {
-        if (!cctvVideo) {
-            reject(new Error("No video element"));
-            return;
-        }
-
-        let settled = false;
-
-        function cleanup() {
-            cctvVideo.removeEventListener("loadeddata", onLoaded);
-            cctvVideo.removeEventListener("error", onError);
-        }
-
-        function onLoaded() {
-            if (settled) {
-                return;
-            }
-            settled = true;
-            cleanup();
-            resolve(url);
-        }
-
-        function onError() {
-            if (settled) {
-                return;
-            }
-            settled = true;
-            cleanup();
-            reject(new Error("Video unavailable"));
-        }
-
-        cctvVideo.addEventListener("loadeddata", onLoaded, { once: true });
-        cctvVideo.addEventListener("error", onError, { once: true });
-        cctvVideo.src = url;
-        cctvVideo.load();
-    });
+    if (!cctvVideo) {
+        return Promise.reject(new Error("No video element"));
+    }
+    return loadMediaCandidate(cctvVideo, url);
 }
 
 async function enableVideoFallback(params, sourceVideo) {
@@ -435,14 +899,18 @@ async function enableVideoFallback(params, sourceVideo) {
 
     var directVideo = params.get("cctvVideo");
     var candidates = [];
+    var sourceCandidates = buildCctvFallbackSources(sourceVideo);
 
     if (directVideo) {
         candidates.push(directVideo);
     }
-    if (sourceVideo) {
-        candidates.push("testdata/" + sourceVideo);
-        candidates.push(sourceVideo);
-    }
+
+    sourceCandidates.forEach(function(candidate) {
+        candidates.push("testdata/" + candidate);
+        if (candidate.endsWith(".mov")) {
+            candidates.push("testdata/" + candidate.replace(/\.mov$/i, ".mp4"));
+        }
+    });
     candidates.push("testdata/demo_cctv.mp4");
 
     var seen = new Set();
@@ -457,12 +925,12 @@ async function enableVideoFallback(params, sourceVideo) {
     for (const candidate of candidates) {
         try {
             await loadVideoCandidate(candidate);
+            await loadCctvDetections(sourceVideo);
             setCctvMode("video");
             cctvVideo.play().catch(function() {});
-            cctvStatus.textContent = "";
+            cctvStatus.textContent = "Fallback video mode";
             cctvLink.href = candidate;
             cctvLink.textContent = "↗ Open video";
-            syncJunctionCameraFeeds(candidate);
             return true;
         } catch (error) {
             continue;
@@ -470,6 +938,58 @@ async function enableVideoFallback(params, sourceVideo) {
     }
 
     return false;
+}
+
+function stopCctvStatsPolling() {
+    if (cctvStatsPollTimer !== null) {
+        window.clearInterval(cctvStatsPollTimer);
+        cctvStatsPollTimer = null;
+    }
+}
+
+function renderCctvStats(payload) {
+    if (!cctvStatus || !payload || !payload.counts) {
+        return;
+    }
+
+    const counts = payload.counts;
+    const parts = [
+        "YOLO",
+        "Cars " + (counts.car ?? 0),
+        "Moto " + (counts.motorcycle ?? 0),
+        "Bus " + (counts.bus ?? 0),
+        "Truck " + (counts.truck ?? 0),
+        "Total " + (counts.total ?? 0)
+    ];
+    cctvStatus.textContent = parts.join(" · ");
+}
+
+async function fetchAndRenderCctvStats(statsUrl) {
+    try {
+        const response = await fetch(statsUrl + (statsUrl.includes("?") ? "&" : "?") + "_=" + Date.now());
+        if (!response.ok) {
+            return;
+        }
+        const payload = await response.json();
+        cctvStatsFailureCount = 0;
+        renderCctvStats(payload);
+    } catch (error) {
+        cctvStatsFailureCount += 1;
+        if (cctvStatsFailureCount >= 2) {
+            stopCctvStatsPolling();
+        }
+    }
+}
+
+function startCctvStatsPolling(statsUrl) {
+    if (!statsUrl) {
+        return;
+    }
+    stopCctvStatsPolling();
+    fetchAndRenderCctvStats(statsUrl);
+    cctvStatsPollTimer = window.setInterval(function() {
+        fetchAndRenderCctvStats(statsUrl);
+    }, 1000);
 }
 
 async function initCctvStream() {
@@ -484,7 +1004,8 @@ async function initCctvStream() {
     var cctvPort = params.get("cctvPort") || "8010";
     var cctvBaseUrl = "http://" + cctvHost + ":" + cctvPort;
     var cctvFeedUrl = cctvBaseUrl + "/video_feed";
-    var sourceVideo = "sense02.mp4";
+    var cctvStatsUrl = cctvBaseUrl + "/stats";
+    var sourceVideo = "sense05.mov";
 
     try {
         const config = await fetch("sandbox_data/cctv_stream_config.json?_=" + Date.now());
@@ -493,6 +1014,15 @@ async function initCctvStream() {
             if (payload && payload.source_video) {
                 sourceVideo = payload.source_video;
                 cctvDetectionState.sourceName = payload.source_video;
+            }
+            if (payload && payload.stream_url) {
+                cctvFeedUrl = payload.stream_url;
+            }
+            if (payload && payload.stats_url) {
+                cctvStatsUrl = payload.stats_url;
+            }
+            if (payload && payload.dashboard_url) {
+                cctvBaseUrl = payload.dashboard_url;
             }
             if (payload && payload.frame_spec && payload.frame_spec.playback_fps) {
                 cctvDetectionState.fps = payload.frame_spec.playback_fps;
@@ -506,28 +1036,35 @@ async function initCctvStream() {
         // Keep the default source name when the metadata file is unavailable.
     }
 
-    loadCctvDetections();
+    cctvDetectionState.loaded = false;
+    clearCctvOverlay();
     ensureCctvDetectionLoop();
 
-    cctvStream.src = cctvFeedUrl;
-    cctvLink.href = cctvBaseUrl + "/";
+    cctvLink.href = cctvBaseUrl;
     cctvStatus.textContent = "";
 
-    cctvStream.addEventListener("load", function () {
+    function handleStreamLoad() {
         setCctvMode("stream");
-        cctvStatus.textContent = "";
+        clearCctvOverlay();
+        startCctvStatsPolling(cctvStatsUrl);
         cctvLink.textContent = "↗ Open server";
-    });
+    }
 
-    cctvStream.addEventListener("error", async function () {
+    async function handleStreamError() {
+        stopCctvStatsPolling();
         cctvStatus.textContent = "";
         cctvLink.textContent = "↗ Open server";
+        cctvStream.classList.add("is-hidden");
 
         var foundVideo = await enableVideoFallback(params, sourceVideo);
         if (!foundVideo) {
             cctvStatus.textContent = "Video unavailable";
         }
-    });
+    }
+
+    cctvStream.addEventListener("load", handleStreamLoad);
+    cctvStream.addEventListener("error", handleStreamError);
+    cctvStream.src = cctvFeedUrl;
 }
 
 initCctvStream();
@@ -731,6 +1268,376 @@ async function loadRealMapDemo() {
     loading = false;
 }
 
+function formatSmartTimestamp() {
+    return "Last updated: " + new Date().toLocaleString("en-GB", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+    }) + " UTC";
+}
+
+function setSmartView(viewName) {
+    smartTrafficState.currentView = viewName;
+
+    const viewTitles = {
+        dashboard: {
+            title: "System Overview",
+            subtitle: "Live control health, AI responsiveness, and peak prediction."
+        },
+        monitoring: {
+            title: "Live Monitoring",
+            subtitle: "Intersection state, lane timing, and operator signal recommendations."
+        },
+        analytics: {
+            title: "Analytics",
+            subtitle: formatSmartTimestamp()
+        },
+        phase2: {
+            title: "Phase 2 Build",
+            subtitle: "Crack-the-Code · Architecture & Feasibility · Required build scope"
+        },
+        settings: {
+            title: "Settings",
+            subtitle: "Operational controls, alerting, and automation preferences."
+        }
+    };
+
+    smartNavItems.forEach(function(item) {
+        item.classList.toggle("is-active", item.dataset.smartView === viewName);
+    });
+    smartViews.forEach(function(panel) {
+        panel.classList.toggle("is-active", panel.dataset.smartPanel === viewName);
+    });
+
+    if (smartPageTitle) smartPageTitle.textContent = viewTitles[viewName].title;
+    if (smartPageSub) smartPageSub.textContent = viewTitles[viewName].subtitle;
+}
+
+function applySmartTheme(themeName) {
+    smartTrafficState.theme = themeName;
+    if (smartTrafficApp) {
+        smartTrafficApp.classList.toggle("smart-theme-dark", themeName === "dark");
+    }
+    smartThemeButtons.forEach(function(button) {
+        button.classList.toggle("is-active", button.dataset.smartTheme === themeName);
+    });
+}
+
+function renderSmartVehicleBreakdown() {
+    if (!smartMetricRefs.vehicleBreakdown) return;
+    smartMetricRefs.vehicleBreakdown.innerHTML = Object.entries(smartTrafficState.metrics.vehicleBreakdown).map(function(entry) {
+        return '<div class="smart-key-item"><span>' + entry[0] + '</span><strong>' + entry[1] + '</strong></div>';
+    }).join("");
+}
+
+function renderSmartTrafficMetrics() {
+    const metrics = smartTrafficState.metrics;
+    const incidentBanner = liveIncidentState.online && liveIncidentState.total
+        ? ("Incident feed: " + liveIncidentState.total + " active events · " + Math.round(liveIncidentState.highestConfidence * 100) + "% top confidence")
+        : metrics.peakBannerText;
+    const detectionHealth = incidentHealthState
+        ? Math.max(52, Math.min(99.5, 100 - ((Number(incidentHealthState.frames_dropped) || 0) * 0.15) - ((Number(incidentHealthState.reconnect_count) || 0) * 2.5)))
+        : metrics.health;
+    const activeTracks = incidentHealthState && incidentHealthState.active_tracks
+        ? Object.values(incidentHealthState.active_tracks).reduce(function(sum, value) {
+            return sum + (Number(value) || 0);
+        }, 0)
+        : null;
+    if (smartMetricRefs.totalVehicles) smartMetricRefs.totalVehicles.textContent = metrics.totalVehicles.toLocaleString("en-GB");
+    if (smartMetricRefs.congestionIndex) smartMetricRefs.congestionIndex.textContent = metrics.congestionIndex.toFixed(2);
+    if (smartMetricRefs.peakBanner) smartMetricRefs.peakBanner.textContent = incidentBanner;
+    if (smartMetricRefs.efficiency) smartMetricRefs.efficiency.textContent = metrics.efficiency.toFixed(1) + "%";
+    if (smartMetricRefs.currentFlow) smartMetricRefs.currentFlow.textContent = metrics.currentFlow.toFixed(1) + "/hour";
+    if (smartMetricRefs.waitTime) smartMetricRefs.waitTime.textContent = metrics.waitMinutes.toFixed(1) + " minutes";
+    if (smartMetricRefs.decisionSpeed) smartMetricRefs.decisionSpeed.textContent = metrics.decisionSpeed + "ms";
+    if (smartMetricRefs.responseTime) smartMetricRefs.responseTime.textContent = metrics.decisionSpeed + "ms";
+    if (smartMetricRefs.health) smartMetricRefs.health.textContent = detectionHealth.toFixed(1) + "%";
+    if (smartMetricRefs.weatherTemp) smartMetricRefs.weatherTemp.textContent = metrics.weatherTemp.toFixed(1) + "°C";
+    if (smartMetricRefs.monitorVehicles) smartMetricRefs.monitorVehicles.textContent = (activeTracks != null ? activeTracks : metrics.totalVehicles).toLocaleString("en-GB");
+    if (smartMetricRefs.monitorWait) smartMetricRefs.monitorWait.textContent = metrics.waitMinutes.toFixed(1) + "m";
+    if (smartMetricRefs.monitorEfficiency) smartMetricRefs.monitorEfficiency.textContent = metrics.efficiency.toFixed(0) + "%";
+    if (smartMetricRefs.analyticsVolume) smartMetricRefs.analyticsVolume.textContent = metrics.currentFlow.toFixed(0);
+    if (smartMetricRefs.analyticsCongestion) smartMetricRefs.analyticsCongestion.textContent = Math.round(metrics.congestionIndex * 100) + "%";
+    if (smartMetricRefs.statusCpu) smartMetricRefs.statusCpu.textContent = metrics.cpu + "%";
+    if (smartMetricRefs.statusMemory) smartMetricRefs.statusMemory.textContent = metrics.memory + "%";
+    if (smartMetricRefs.statusNetwork) smartMetricRefs.statusNetwork.textContent = metrics.network + "ms";
+    if (smartMetricRefs.timingNS) smartMetricRefs.timingNS.textContent = metrics.timingNS + "s";
+    if (smartMetricRefs.timingEW) smartMetricRefs.timingEW.textContent = metrics.timingEW + "s";
+    if (smartMetricRefs.signalNorth) smartMetricRefs.signalNorth.textContent = metrics.signalNorth + "s";
+    if (smartMetricRefs.signalSouth) smartMetricRefs.signalSouth.textContent = metrics.signalSouth + "s";
+    if (smartMetricRefs.signalEast) smartMetricRefs.signalEast.textContent = metrics.signalEast + "s";
+    if (smartMetricRefs.signalWest) smartMetricRefs.signalWest.textContent = metrics.signalWest + "s";
+    if (smartMetricRefs.barNS) smartMetricRefs.barNS.style.width = metrics.barNS + "%";
+    if (smartMetricRefs.barEW) smartMetricRefs.barEW.style.width = metrics.barEW + "%";
+    if (smartMetricRefs.visibility) smartMetricRefs.visibility.textContent = metrics.visibility.toFixed(1);
+    if (smartMetricRefs.weatherText) smartMetricRefs.weatherText.textContent = metrics.weatherText;
+    if (smartMetricRefs.temperature) smartMetricRefs.temperature.textContent = metrics.weatherTemp.toFixed(1) + " C";
+    if (smartMetricRefs.wind) smartMetricRefs.wind.textContent = metrics.wind.toFixed(1) + " mph";
+    renderSmartVehicleBreakdown();
+}
+
+function recordLiveTrafficPoint(totalVehicles) {
+    liveTrafficSeries.push({
+        timestamp: new Date(),
+        total: totalVehicles
+    });
+    if (liveTrafficSeries.length > 36) {
+        liveTrafficSeries = liveTrafficSeries.slice(-36);
+    }
+}
+
+function rebuildMapTrafficFromLiveSeries() {
+    if (!liveTrafficSeries.length) {
+        return;
+    }
+
+    mapTrafficSeries.labels = liveTrafficSeries.map(function(point) {
+        return point.timestamp.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    });
+    mapTrafficSeries.values = liveTrafficSeries.map(function(point) {
+        return point.total;
+    });
+    mapTrafficSeries.cursor = Math.max(0, mapTrafficSeries.values.length - Math.min(mapTrafficSeries.windowSize, mapTrafficSeries.values.length));
+
+    if (mapTrafficKpi) {
+        const peak = mapTrafficSeries.values.length ? Math.max.apply(null, mapTrafficSeries.values) : 0;
+        const latest = mapTrafficSeries.values.length ? mapTrafficSeries.values[mapTrafficSeries.values.length - 1] : 0;
+        mapTrafficKpi.textContent = peak ? (latest + " live · " + peak + " peak vehicles") : "-- vehicles";
+    }
+
+    const canvas = document.getElementById("map-traffic-chart");
+    if (!canvas || typeof Chart === "undefined") {
+        return;
+    }
+
+    if (!mapTrafficChart) {
+        mapTrafficChart = new Chart(canvas.getContext("2d"), {
+            type: "line",
+            data: {
+                labels: [],
+                datasets: [{
+                    label: "Vehicles",
+                    data: [],
+                    borderColor: "#3ecfff",
+                    backgroundColor: "rgba(62,207,255,.16)",
+                    fill: true,
+                    tension: 0.32,
+                    borderWidth: 2,
+                    pointRadius: [],
+                    pointHitRadius: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return " " + context.parsed.y + " vehicles";
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: "#94a3b8", maxRotation: 0, autoSkip: true, maxTicksLimit: 6 },
+                        grid: { color: "rgba(255,255,255,.05)" }
+                    },
+                    y: {
+                        ticks: { color: "#94a3b8" },
+                        grid: { color: "rgba(255,255,255,.07)" }
+                    }
+                }
+            }
+        });
+    }
+
+    renderMapTrafficWindow();
+}
+
+function updateSmartTrafficFromVideoStats() {
+    const payloads = Object.values(liveCameraStats).filter(function(item) {
+        return item && item.counts;
+    });
+    if (!payloads.length) {
+        return false;
+    }
+
+    const totals = payloads.reduce(function(acc, payload) {
+        const counts = payload.counts || {};
+        acc.total += Number(counts.total) || 0;
+        acc.car += Number(counts.car) || 0;
+        acc.bus += Number(counts.bus) || 0;
+        acc.truck += Number(counts.truck) || 0;
+        acc.motorcycle += Number(counts.motorcycle) || 0;
+        return acc;
+    }, { total: 0, car: 0, bus: 0, truck: 0, motorcycle: 0 });
+
+    const avgVehiclesPerCamera = totals.total / Math.max(1, payloads.length);
+    const currentFlow = totals.total * 120;
+    const congestionIndex = Math.min(0.98, totals.total / 40);
+    const waitMinutes = Number((1.4 + congestionIndex * 7 + totals.truck * 0.15).toFixed(1));
+    const efficiency = Number(Math.max(58, 96 - congestionIndex * 28).toFixed(1));
+    const decisionSpeed = Math.max(72, 180 - totals.total * 2);
+    const network = Math.max(8, 24 + totals.total);
+
+    smartTrafficState.metrics.totalVehicles = totals.total;
+    smartTrafficState.metrics.currentFlow = currentFlow;
+    smartTrafficState.metrics.congestionIndex = Number(congestionIndex.toFixed(2));
+    smartTrafficState.metrics.waitMinutes = waitMinutes;
+    smartTrafficState.metrics.efficiency = efficiency;
+    smartTrafficState.metrics.decisionSpeed = decisionSpeed;
+    smartTrafficState.metrics.health = Number(Math.max(82, 99 - congestionIndex * 10).toFixed(1));
+    smartTrafficState.metrics.peakBannerText = "Live peak vehicles: " + totals.total + " across active camera feeds";
+    smartTrafficState.metrics.cpu = Math.min(94, 18 + totals.total * 2);
+    smartTrafficState.metrics.memory = Math.min(95, 48 + totals.total);
+    smartTrafficState.metrics.network = network;
+    smartTrafficState.metrics.timingNS = Math.max(3, Math.round(3 + avgVehiclesPerCamera / 3));
+    smartTrafficState.metrics.timingEW = Math.max(3, Math.round(2 + avgVehiclesPerCamera / 4));
+    smartTrafficState.metrics.signalNorth = 3 + Math.round((liveCameraStats.north?.counts?.total || 0) / 2);
+    smartTrafficState.metrics.signalSouth = 3 + Math.round((liveCameraStats.south?.counts?.total || 0) / 2);
+    smartTrafficState.metrics.signalEast = 3 + Math.round((liveCameraStats.east?.counts?.total || 0) / 2);
+    smartTrafficState.metrics.signalWest = 3 + Math.round((liveCameraStats.west?.counts?.total || 0) / 2);
+    smartTrafficState.metrics.barNS = Math.min(100, 24 + (liveCameraStats.north?.counts?.total || 0) * 6 + (liveCameraStats.south?.counts?.total || 0) * 6);
+    smartTrafficState.metrics.barEW = Math.min(100, 24 + (liveCameraStats.east?.counts?.total || 0) * 6 + (liveCameraStats.west?.counts?.total || 0) * 6);
+    smartTrafficState.metrics.vehicleBreakdown = {
+        Cars: totals.car,
+        Trucks: totals.truck,
+        Buses: totals.bus,
+        Motorcycles: totals.motorcycle
+    };
+
+    recordLiveTrafficPoint(totals.total);
+    rebuildMapTrafficFromLiveSeries();
+    renderSmartTrafficMetrics();
+    return true;
+}
+
+function recordLiveDetectorSnapshot() {
+    const cameras = {};
+    Object.keys(JUNCTION_CAM_CONFIG).forEach(function(cam) {
+        if (liveCameraStats[cam] && liveCameraStats[cam].counts) {
+            cameras[cam] = liveCameraStats[cam];
+        }
+    });
+    if (!Object.keys(cameras).length) {
+        return;
+    }
+
+    liveDetectorHistory.push({
+        timestamp: new Date().toISOString(),
+        cameras: cameras
+    });
+    if (liveDetectorHistory.length > 16) {
+        liveDetectorHistory = liveDetectorHistory.slice(-16);
+    }
+
+    renderTable(
+        detectorTable,
+        buildDetectorRowsFromLiveHistory().slice(-16).reverse(),
+        ["timestamp", "detector_id", "approach", "lane_label", "vehicle_count", "avg_speed_kmh"]
+    );
+    renderTable(
+        signalTable,
+        buildSignalRowsFromLiveHistory().slice(-16).reverse(),
+        ["timestamp", "phase_number", "signal_state", "duration_sec", "control_mode"]
+    );
+}
+
+async function seedSmartTrafficMetrics() {
+    try {
+        const detectorText = await loadTextResource("sandbox_data/detector_counts_15min.csv");
+        const signalText = await loadTextResource("sandbox_data/signal_timing_log.csv");
+        const detectorRows = parseCsv(detectorText).slice(0, 24);
+        const signalRows = parseCsv(signalText).slice(0, 24);
+        const totalVehicles = detectorRows.reduce(function(sum, row) {
+            return sum + (Number(row.vehicle_count) || 0);
+        }, 0);
+        const averageVehicles = detectorRows.length ? totalVehicles / detectorRows.length : 0;
+        const greenEvents = signalRows.filter(function(row) {
+            return String(row.signal_state || "").toUpperCase().indexOf("GREEN") !== -1;
+        }).length;
+        const congestionIndex = averageVehicles ? Math.min(0.96, averageVehicles / 60) : smartTrafficState.metrics.congestionIndex;
+
+        smartTrafficState.metrics.totalVehicles = Math.round(totalVehicles);
+        smartTrafficState.metrics.currentFlow = Math.round(averageVehicles * 12);
+        smartTrafficState.metrics.congestionIndex = Number(congestionIndex.toFixed(2));
+        smartTrafficState.metrics.waitMinutes = Number((2.2 + congestionIndex * 8).toFixed(1));
+        smartTrafficState.metrics.efficiency = Number((78 + greenEvents).toFixed(1));
+        smartTrafficState.metrics.decisionSpeed = 120 + greenEvents * 3;
+        smartTrafficState.metrics.cpu = 22 + greenEvents;
+        smartTrafficState.metrics.memory = 74 + Math.min(16, Math.round(averageVehicles / 12));
+        smartTrafficState.metrics.vehicleBreakdown = {
+            Cars: Math.round(totalVehicles * 0.78),
+            Trucks: Math.round(totalVehicles * 0.11),
+            Buses: Math.round(totalVehicles * 0.04),
+            Motorcycles: Math.round(totalVehicles * 0.07)
+        };
+    } catch (e) {
+        console.error("Smart dashboard metrics fallback", e.message);
+    }
+
+    renderSmartTrafficMetrics();
+}
+
+function startSmartTrafficMetricsPolling() {
+    if (smartTrafficMetricsTimer !== null) {
+        window.clearInterval(smartTrafficMetricsTimer);
+    }
+
+    smartTrafficMetricsTimer = window.setInterval(function() {
+        if (!updateSmartTrafficFromVideoStats()) {
+            renderSmartTrafficMetrics();
+        }
+    }, 1200);
+}
+
+function initSmartTrafficDashboard() {
+    if (smartTrafficState.initialized) return;
+
+    smartNavItems.forEach(function(item) {
+        item.addEventListener("click", function() {
+            setSmartView(item.dataset.smartView);
+        });
+    });
+
+    smartThemeButtons.forEach(function(button) {
+        button.addEventListener("click", function() {
+            applySmartTheme(button.dataset.smartTheme);
+        });
+    });
+
+    if (smartBackButton) {
+        smartBackButton.addEventListener("click", function() {
+            if (smartTrafficApp) smartTrafficApp.classList.add("d-none");
+            if (mainShell) mainShell.classList.remove("d-none");
+        });
+    }
+
+    applySmartTheme("dark");
+    setSmartView("dashboard");
+    seedSmartTrafficMetrics();
+    startSmartTrafficMetricsPolling();
+    smartTrafficState.initialized = true;
+}
+
+function openSmartTrafficDashboard() {
+    initSmartTrafficDashboard();
+    if (mainShell) mainShell.classList.add("d-none");
+    if (smartTrafficApp) smartTrafficApp.classList.remove("d-none");
+    setSmartView("dashboard");
+    if (smartPageSub) {
+        smartPageSub.textContent = "Intersection state, lane timing, and operator control actions.";
+    }
+    infoAppend("Opened Smart Traffic workspace inside the current app");
+}
+
 function start() {
     if (loading) return;
     showSimulationView();
@@ -774,6 +1681,7 @@ ChartFileDom.addEventListener("change",
 document.getElementById("start-btn").addEventListener("click", start);
 document.getElementById("load-demo-btn").addEventListener("click", loadSandboxDemo);
 document.getElementById("load-realmap-btn").addEventListener("click", loadRealMapDemo);
+document.getElementById("open-smart-traffic-btn").addEventListener("click", openSmartTrafficDashboard);
 
 document.getElementById("slow-btn").addEventListener("click", function() {
     updateReplaySpeed(controls.replaySpeed - 0.1);
@@ -1348,11 +2256,115 @@ function parseCsv(text) {
     });
 }
 
+function parseNdjson(text) {
+    return text.trim().split("\n").map(function(line) {
+        try {
+            return JSON.parse(line);
+        } catch (_error) {
+            return null;
+        }
+    }).filter(Boolean);
+}
+
 function renderTable(table, rows, columns) {
     if (!table || rows.length === 0) return;
     const header = "<thead><tr>" + columns.map((col) => `<th>${col}</th>`).join("") + "</tr></thead>";
     const body = "<tbody>" + rows.map((row) => "<tr>" + columns.map((col) => `<td>${row[col] ?? ""}</td>`).join("") + "</tr>").join("") + "</tbody>";
     table.innerHTML = header + body;
+}
+
+function corridorMeta(corridor) {
+    const mapping = {
+        N: { detector_id: "D01", approach: "North", lane_label: "N-AGG", phase_number: 1 },
+        S: { detector_id: "D02", approach: "South", lane_label: "S-AGG", phase_number: 2 },
+        E: { detector_id: "D03", approach: "East", lane_label: "E-AGG", phase_number: 3 },
+        W: { detector_id: "D04", approach: "West", lane_label: "W-AGG", phase_number: 4 }
+    };
+    return mapping[corridor] || { detector_id: "D00", approach: corridor, lane_label: corridor + "-AGG", phase_number: 0 };
+}
+
+function buildDetectorRowsFromTypical(rows) {
+    return rows.filter(function(row) {
+        return row && row.ok && row.departure_local && row.corridor;
+    }).map(function(row) {
+        const meta = corridorMeta(row.corridor);
+        const vehicleCount = Math.max(1, Math.round((row.congestion_ratio || 0.8) * 18));
+        return {
+            timestamp: row.departure_local.replace(/([+-]\d{2})(\d{2})$/, "$1:$2"),
+            detector_id: meta.detector_id,
+            approach: meta.approach,
+            lane_label: meta.lane_label,
+            vehicle_count: vehicleCount,
+            avg_speed_kmh: Number(row.speed_kmh || 0).toFixed(2)
+        };
+    });
+}
+
+function buildSignalRowsFromTypical(rows) {
+    const signals = [];
+    rows.filter(function(row) {
+        return row && row.ok && row.departure_local && row.corridor;
+    }).forEach(function(row) {
+        const meta = corridorMeta(row.corridor);
+        const start = row.departure_local.replace(/([+-]\d{2})(\d{2})$/, "$1:$2");
+        const green = Math.max(10, Math.round((row.congestion_ratio || 0.8) * 18));
+        signals.push({
+            timestamp: start,
+            phase_number: meta.phase_number,
+            signal_state: "GREEN ON",
+            duration_sec: green,
+            control_mode: "typical-derived"
+        });
+        signals.push({
+            timestamp: start,
+            phase_number: meta.phase_number,
+            signal_state: "YELLOW ON",
+            duration_sec: 3,
+            control_mode: "typical-derived"
+        });
+        signals.push({
+            timestamp: start,
+            phase_number: meta.phase_number,
+            signal_state: "RED ON",
+            duration_sec: 2,
+            control_mode: "typical-derived"
+        });
+    });
+    return signals;
+}
+
+function buildDetectorRowsFromLiveHistory() {
+    return liveDetectorHistory.slice(-16).flatMap(function(snapshot) {
+        return Object.keys(snapshot.cameras).map(function(cam) {
+            const counts = snapshot.cameras[cam].counts || {};
+            const meta = corridorMeta(cam.charAt(0).toUpperCase());
+            const approxSpeed = Math.max(8, 34 - (Number(counts.total) || 0) * 1.8);
+            return {
+                timestamp: snapshot.timestamp,
+                detector_id: meta.detector_id,
+                approach: meta.approach,
+                lane_label: meta.lane_label,
+                vehicle_count: Number(counts.total) || 0,
+                avg_speed_kmh: approxSpeed.toFixed(2)
+            };
+        });
+    });
+}
+
+function buildSignalRowsFromLiveHistory() {
+    return liveDetectorHistory.slice(-16).flatMap(function(snapshot) {
+        return Object.keys(snapshot.cameras).map(function(cam) {
+            const counts = snapshot.cameras[cam].counts || {};
+            const meta = corridorMeta(cam.charAt(0).toUpperCase());
+            return {
+                timestamp: snapshot.timestamp,
+                phase_number: meta.phase_number,
+                signal_state: (Number(counts.total) || 0) >= 6 ? "GREEN ON" : "YELLOW ON",
+                duration_sec: Math.max(3, Math.min(24, 4 + (Number(counts.total) || 0) * 2)),
+                control_mode: "video-analysis"
+            };
+        });
+    });
 }
 
 function renderGroundTruth(payload) {
@@ -1496,16 +2508,30 @@ function startMapTrafficAnimation() {
 
 async function hydrateSandboxData() {
     try {
-        const detectorText = await loadTextResource("sandbox_data/detector_counts_15min.csv");
-        const signalText = await loadTextResource("sandbox_data/signal_timing_log.csv");
+        const typicalText = await loadTextResource("sandbox_data/typical_2026-04-26.ndjson");
         const metadataText = await loadTextResource("sandbox_data/intersection_metadata.json");
         const groundTruthText = await loadTextResource("sandbox_data/ground_truth_validation.json");
+        const typicalRows = parseNdjson(typicalText);
+        const detectorRows = buildDetectorRowsFromTypical(typicalRows);
+        const signalRows = buildSignalRowsFromTypical(typicalRows);
 
-        renderTable(detectorTable, parseCsv(detectorText).slice(0, 10), ["timestamp", "detector_id", "approach", "lane_label", "vehicle_count"]);
-        renderTable(signalTable, parseCsv(signalText).slice(0, 10), ["timestamp", "intersection_id", "phase_number", "signal_state"]);
+        if (!liveDetectorHistory.length) {
+            renderTable(
+                detectorTable,
+                detectorRows.slice(0, 16),
+                ["timestamp", "detector_id", "approach", "lane_label", "vehicle_count", "avg_speed_kmh"]
+            );
+            renderTable(
+                signalTable,
+                signalRows.slice(0, 16),
+                ["timestamp", "phase_number", "signal_state", "duration_sec", "control_mode"]
+            );
+        }
         metadataPreview.textContent = JSON.stringify(JSON.parse(metadataText), null, 2);
         renderGroundTruth(JSON.parse(groundTruthText));
-        buildMapTrafficChart(parseCsv(detectorText));
+        if (!liveTrafficSeries.length) {
+            buildMapTrafficChart(detectorRows);
+        }
     } catch (e) {
         console.error("Sandbox data preview failed", e.message);
     }

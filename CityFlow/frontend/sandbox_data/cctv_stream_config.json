@@ -1,16 +1,18 @@
 {
-  "stream_id": "PHASE1-CAM-02",
-  "source_video": "sense02.mp4",
+  "stream_id": "PHASE1-CAM-05",
+  "source_video": "sense05.mov",
   "stream_url": "http://127.0.0.1:8010/video_feed",
+  "stats_url": "http://127.0.0.1:8010/stats",
+  "dashboard_url": "http://127.0.0.1:8010/",
   "rtsp_simulation": {
-    "method": "MJPEG-over-HTTP (Flask wrapper)",
+    "method": "MJPEG-over-HTTP (YOLO live wrapper)",
     "equivalent_protocol": "RTSP/H.264",
     "codec_assumption": "H.264 / H.265",
-    "note": "Flask cctv_web.py re-encodes each frame as JPEG and delivers over multipart/x-mixed-replace, replicating the frame-by-frame behaviour of an RTSP stream."
+    "note": "http_stream.py runs YOLO on each looped video frame, draws detections, and serves multipart/x-mixed-replace for the frontend."
   },
   "frame_spec": {
-    "width_px": 1920,
-    "height_px": 1080,
+    "width_px": 1280,
+    "height_px": 720,
     "color_space": "RGB",
     "playback_fps": 10,
     "ai_ingestion_fps_range": [
@@ -19,7 +21,7 @@
     ]
   },
   "camera": {
-    "camera_id": "WTS CAM 02",
+    "camera_id": "WTS CAM 05",
     "site": "INT-001",
     "location": {
       "x": 0,
@@ -29,5 +31,5 @@
     "field_of_view_deg": 78,
     "mounting": "overhead-intersection"
   },
-  "serve_command": "python3.11 tools/cctv_web.py data/wts_videos/sense02.mp4 --port 8010 --camera-id 'WTS CAM 02' --width 1920 --height 1080 --fps 10 --show-labels --annotations data/wts_annotations/sense02_tracklab_vehicle.json"
+  "serve_command": "../.venv/bin/python src/http_stream.py --video ../../CityFlow/data/wts_videos/sense05.mov --port 8010 --camera-id 'CAM-01 NORTH' --width 1280 --height 720 --fps 10"
 }

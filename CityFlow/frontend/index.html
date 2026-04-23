@@ -101,6 +101,11 @@
     </div>
 
     <div class="sidebar-section">
+      <div class="sidebar-label">External Dashboard</div>
+      <button class="btn btn-ghost btn-block" id="open-smart-traffic-btn">Open Smart Traffic Dashboard</button>
+    </div>
+
+    <div class="sidebar-section">
       <div class="sidebar-label">Phase 1 Assets</div>
       <div class="asset-list">
         <a class="asset-link" href="sandbox_data/detector_counts_15min.csv" target="_blank"><span>Detector counts</span><span class="ext">CSV</span></a>
@@ -124,11 +129,11 @@
       <div class="panel map-panel">
         <div class="panel-head">
           <div class="panel-head-left">
-            <div class="panel-eyebrow">CAM-01 NORTH · sense02.mp4</div>
+            <div class="panel-eyebrow">CAM-01 NORTH · sense05.mov</div>
             <div class="panel-title">CCTV Live Feed — Full View</div>
           </div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <span class="pill pill-green">RTSP-style</span>
+            <span class="pill pill-green">sense05.mov</span>
             <span class="pill pill-blue">1280×720</span>
             <span class="pill pill-blue">H.264 · 10 FPS</span>
           </div>
@@ -138,7 +143,7 @@
           <video id="cctv-video" class="is-hidden" muted autoplay loop playsinline preload="auto"></video>
           <canvas id="cctv-overlay-canvas" class="cctv-overlay-canvas"></canvas>
           <div class="cctv-top-badge">
-            <span class="cctv-dot"></span>LIVE · INT-001 · sense02
+            <span class="cctv-dot"></span>LIVE · INT-001 · sense05 · YOLO
           </div>
           <div class="cctv-overlay">
             <span id="cctv-status-anchor"></span>
@@ -203,34 +208,45 @@
           </div>
           <span class="pill pill-green">Live</span>
         </div>
+        <!-- Per-camera YOLO detection dashboard -->
+        <div class="cam-dashboard-stats">
+          <div class="cam-dash-col" id="dash-north">
+            <div class="cam-dash-label"><span class="cam-live-dot"></span>CAM-01 · North</div>
+            <div class="cam-dash-row" id="dash-stats-north"><span>Total —</span><span>Cars —</span><span>Bus —</span><span>Truck —</span></div>
+          </div>
+          <div class="cam-dash-col" id="dash-south">
+            <div class="cam-dash-label"><span class="cam-live-dot"></span>CAM-02 · South</div>
+            <div class="cam-dash-row" id="dash-stats-south"><span>Total —</span><span>Cars —</span><span>Bus —</span><span>Truck —</span></div>
+          </div>
+          <div class="cam-dash-col" id="dash-east">
+            <div class="cam-dash-label"><span class="cam-live-dot"></span>CAM-03 · East</div>
+            <div class="cam-dash-row" id="dash-stats-east"><span>Total —</span><span>Cars —</span><span>Bus —</span><span>Truck —</span></div>
+          </div>
+          <div class="cam-dash-col" id="dash-west">
+            <div class="cam-dash-label"><span class="cam-live-dot"></span>CAM-04 · West</div>
+            <div class="cam-dash-row" id="dash-stats-west"><span>Total —</span><span>Cars —</span><span>Bus —</span><span>Truck —</span></div>
+          </div>
+        </div>
         <div class="cam-grid">
           <section class="junction-cam">
-            <div class="cam-seg-label">
-              <span class="cam-live-dot"></span>CAM-01 · North
-              <span class="cam-seg-badge">video02</span>
-            </div>
-            <video class="junction-cam-video" data-cam="north" data-segment="tl" muted autoplay loop playsinline preload="auto"></video>
+            <img class="junction-cam-video" data-cam="north" alt="CAM-01 North feed" />
+            <canvas class="junction-cam-overlay" data-cam-overlay="north"></canvas>
+            <div class="cam-yolo-badge"><span class="cctv-dot"></span><span class="cam-time" id="cam-time-north"></span></div>
           </section>
           <section class="junction-cam">
-            <div class="cam-seg-label">
-              <span class="cam-live-dot"></span>CAM-02 · South
-              <span class="cam-seg-badge">video02</span>
-            </div>
-            <video class="junction-cam-video" data-cam="south" data-segment="tr" muted autoplay loop playsinline preload="auto"></video>
+            <img class="junction-cam-video" data-cam="south" alt="CAM-02 South feed" />
+            <canvas class="junction-cam-overlay" data-cam-overlay="south"></canvas>
+            <div class="cam-yolo-badge"><span class="cctv-dot"></span><span class="cam-time" id="cam-time-south"></span></div>
           </section>
           <section class="junction-cam">
-            <div class="cam-seg-label">
-              <span class="cam-live-dot"></span>CAM-03 · East
-              <span class="cam-seg-badge">video02</span>
-            </div>
-            <video class="junction-cam-video" data-cam="east" data-segment="bl" muted autoplay loop playsinline preload="auto"></video>
+            <img class="junction-cam-video" data-cam="east" alt="CAM-03 East feed" />
+            <canvas class="junction-cam-overlay" data-cam-overlay="east"></canvas>
+            <div class="cam-yolo-badge"><span class="cctv-dot"></span><span class="cam-time" id="cam-time-east"></span></div>
           </section>
           <section class="junction-cam">
-            <div class="cam-seg-label">
-              <span class="cam-live-dot"></span>CAM-04 · West
-              <span class="cam-seg-badge">video02</span>
-            </div>
-            <video class="junction-cam-video" data-cam="west" data-segment="br" muted autoplay loop playsinline preload="auto"></video>
+            <img class="junction-cam-video" data-cam="west" alt="CAM-04 West feed" />
+            <canvas class="junction-cam-overlay" data-cam-overlay="west"></canvas>
+            <div class="cam-yolo-badge"><span class="cctv-dot"></span><span class="cam-time" id="cam-time-west"></span></div>
           </section>
         </div>
       </div>
@@ -296,6 +312,743 @@
   </main>
 </div>
 
+<div id="smart-traffic-app" class="smart-shell d-none">
+
+  <!-- ── Sidebar ───────────────────────────────────────────────── -->
+  <aside class="smart-sidebar">
+    <div class="smart-brand">
+      <div class="smart-brand-mark">
+        <div class="smart-brand-dot"></div>
+      </div>
+      <div>
+        <div class="smart-brand-title">Traffic AI</div>
+        <div class="smart-brand-sub">Phase 2 · Smart Control</div>
+      </div>
+    </div>
+
+    <!-- hidden theme toggle kept for JS compatibility -->
+    <div style="display:none">
+      <button class="smart-theme-btn is-active" data-smart-theme="dark">Dark</button>
+      <button class="smart-theme-btn" data-smart-theme="light">Light</button>
+    </div>
+
+    <nav class="smart-nav">
+      <button class="smart-nav-item is-active" data-smart-view="dashboard">
+        <span class="snav-icon">⬡</span>Overview
+      </button>
+      <button class="smart-nav-item" data-smart-view="monitoring">
+        <span class="snav-icon">◉</span>Live Monitoring
+      </button>
+      <button class="smart-nav-item" data-smart-view="analytics">
+        <span class="snav-icon">◈</span>Analytics
+      </button>
+      <button class="smart-nav-item snav-phase2" data-smart-view="phase2">
+        <span class="snav-icon">⬟</span>Phase 2 Build
+        <span class="snav-badge">NEW</span>
+      </button>
+      <button class="smart-nav-item" data-smart-view="settings">
+        <span class="snav-icon">⚙</span>Settings
+      </button>
+    </nav>
+
+    <div class="smart-status-card">
+      <div class="smart-status-title">
+        <span class="smart-status-dot"></span>System Health
+      </div>
+      <div class="smart-status-row"><span>CPU</span><strong id="smart-status-cpu">27%</strong></div>
+      <div class="smart-status-row"><span>Memory</span><strong id="smart-status-memory">85%</strong></div>
+      <div class="smart-status-row"><span>Network</span><strong id="smart-status-network">0ms</strong></div>
+      <div class="smart-status-row"><span>Streams</span><strong style="color:#3ecfff">4 / 4</strong></div>
+    </div>
+  </aside>
+
+  <!-- ── Main ──────────────────────────────────────────────────── -->
+  <main class="smart-main">
+    <header class="smart-header">
+      <div>
+        <h1 class="smart-page-title" id="smart-page-title">Overview</h1>
+        <div class="smart-page-sub" id="smart-page-sub">Traffic Intelligence Platform · Phase 2</div>
+      </div>
+      <div class="smart-header-actions">
+        <span class="smart-live-badge"><span></span>Live · INT-001</span>
+        <button class="smart-back-btn" id="smart-back-btn">← CityFlow</button>
+      </div>
+    </header>
+
+    <!-- ── VIEW: dashboard ───────────────────────────────────────── -->
+    <section class="smart-view is-active" data-smart-panel="dashboard">
+      <div class="smart-grid smart-grid-overview">
+        <article class="smart-card smart-overview-card">
+          <div class="smart-card-eyebrow">Real-time system snapshot</div>
+          <div class="smart-card-title">System Overview</div>
+          <div class="smart-overview-metrics">
+            <div class="smart-overview-metric">
+              <span class="smart-overview-label">System Health</span>
+              <strong id="smart-health">98.4%</strong>
+              <em>Critical ready</em>
+            </div>
+            <div class="smart-overview-metric">
+              <span class="smart-overview-label">Weather</span>
+              <strong id="smart-weather-temp">31.0°C</strong>
+              <em>Clear</em>
+            </div>
+            <div class="smart-overview-metric">
+              <span class="smart-overview-label">AI Response</span>
+              <strong id="smart-response-time">151ms</strong>
+              <em>Excellent</em>
+            </div>
+            <div class="smart-overview-metric">
+              <span class="smart-overview-label">Current Flow</span>
+              <strong id="smart-current-flow">0.0/hr</strong>
+              <em>Low</em>
+            </div>
+            <div class="smart-overview-metric">
+              <span class="smart-overview-label">Avg Wait</span>
+              <strong id="smart-wait-time">0.0 min</strong>
+              <em>Excellent</em>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <div class="smart-grid smart-grid-dashboard">
+        <article class="smart-card">
+          <div class="smart-card-head">
+            <div>
+              <div class="smart-card-eyebrow">Live data · SimToll feed</div>
+              <div class="smart-card-title">Traffic Metrics</div>
+            </div>
+            <span class="smart-chip">Real-time</span>
+          </div>
+          <div class="smart-stack-metrics">
+            <div class="smart-stack-item">
+              <span>Total Vehicle Count</span>
+              <strong id="smart-total-vehicles">0</strong>
+            </div>
+            <div class="smart-stack-item">
+              <span>Congestion Index</span>
+              <strong id="smart-congestion-index">0.0</strong>
+            </div>
+            <div class="smart-inline-banner" id="smart-peak-banner">Next peak prediction: 17:15 (High volume expected)</div>
+          </div>
+        </article>
+
+        <article class="smart-card smart-ai-card">
+          <div class="smart-card-head">
+            <div>
+              <div class="smart-card-eyebrow">YOLO + ByteTrack</div>
+              <div class="smart-card-title">AI Control System</div>
+            </div>
+            <span class="smart-chip smart-chip-green">Active</span>
+          </div>
+          <div class="smart-gauge">
+            <div class="smart-gauge-ring">
+              <div class="smart-gauge-inner">
+                <strong id="smart-efficiency">85.1%</strong>
+                <span>Efficiency</span>
+              </div>
+            </div>
+          </div>
+          <div class="smart-ai-meta">
+            <div><span>Models Running</span><strong>2 / 2</strong></div>
+            <div><span>Avg Decision Speed</span><strong id="smart-decision-speed">151ms</strong></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- ── VIEW: monitoring ──────────────────────────────────────── -->
+    <section class="smart-view" data-smart-panel="monitoring">
+      <div class="smart-grid smart-grid-monitoring">
+        <article class="smart-card">
+          <div class="smart-card-head">
+            <div>
+              <div class="smart-card-eyebrow">INT-001 · Wadi Saqra</div>
+              <div class="smart-card-title">Junction Intersection</div>
+            </div>
+            <span class="smart-state-pill">Active</span>
+          </div>
+
+          <div class="smart-monitor-tabs">
+            <button class="is-active">Live</button>
+            <button>Stats</button>
+            <button>History</button>
+          </div>
+
+          <div class="smart-intersection-stage">
+            <div class="smart-road smart-road-horizontal"></div>
+            <div class="smart-road smart-road-vertical"></div>
+            <div class="smart-crosswalk"></div>
+            <div class="smart-light smart-light-north"><span>N</span><strong id="smart-signal-north">4s</strong></div>
+            <div class="smart-light smart-light-south is-red"><span>S</span><strong id="smart-signal-south">4s</strong></div>
+            <div class="smart-light smart-light-east is-red"><span>E</span><strong id="smart-signal-east">4s</strong></div>
+            <div class="smart-light smart-light-west"><span>W</span><strong id="smart-signal-west">4s</strong></div>
+          </div>
+
+          <div class="smart-kpi-row">
+            <div class="smart-mini-kpi"><span>Vehicles</span><strong id="smart-monitor-vehicles">0</strong><em>+12%</em></div>
+            <div class="smart-mini-kpi"><span>Wait</span><strong id="smart-monitor-wait">~m</strong><em>−%</em></div>
+            <div class="smart-mini-kpi"><span>Efficiency</span><strong id="smart-monitor-efficiency">~%</strong><em>+%</em></div>
+          </div>
+        </article>
+
+        <article class="smart-card">
+          <div class="smart-card-eyebrow">Decision support only · read-only</div>
+          <div class="smart-card-title">Signal Recommendations</div>
+          <div class="smart-action-stack" style="margin-top:18px">
+            <button class="smart-action smart-action-danger">Emergency Override<span>Clear all lanes immediately — operator approval required</span></button>
+            <button class="smart-action smart-action-success">Extend Green Time<span>Add 30 s to current phase · AI recommendation</span></button>
+            <button class="smart-action smart-action-info">Manual Control Mode<span>Take direct control of signals</span></button>
+            <button class="smart-action smart-action-warn">Reset to Auto<span>Return to AI adaptive optimization</span></button>
+          </div>
+        </article>
+      </div>
+
+      <!-- Live camera feeds with per-camera detection results -->
+      <article class="smart-card" style="padding:0;overflow:hidden">
+        <div class="smart-card-head" style="padding:16px 20px 14px;border-bottom:1px solid var(--border)">
+          <div>
+            <div class="smart-card-eyebrow">YOLO v8 · Real-time · 4 streams</div>
+            <div class="smart-card-title">Live Camera Detection Feed</div>
+          </div>
+          <span class="smart-state-pill">● Live</span>
+        </div>
+        <div class="smart-cam-feed-grid">
+          <div class="smart-cam-tile" data-smart-cam="north">
+            <img class="smart-cam-img" id="smart-cam-img-north" alt="CAM-01 North" />
+            <div class="smart-cam-overlay-label"><span class="cam-live-dot"></span>CAM-01 · NORTH <span class="smart-cam-ts" id="smart-cam-ts-north"></span></div>
+          </div>
+          <div class="smart-cam-tile" data-smart-cam="south">
+            <img class="smart-cam-img" id="smart-cam-img-south" alt="CAM-02 South" />
+            <div class="smart-cam-overlay-label"><span class="cam-live-dot"></span>CAM-02 · SOUTH <span class="smart-cam-ts" id="smart-cam-ts-south"></span></div>
+          </div>
+          <div class="smart-cam-tile" data-smart-cam="east">
+            <img class="smart-cam-img" id="smart-cam-img-east" alt="CAM-03 East" />
+            <div class="smart-cam-overlay-label"><span class="cam-live-dot"></span>CAM-03 · EAST <span class="smart-cam-ts" id="smart-cam-ts-east"></span></div>
+          </div>
+          <div class="smart-cam-tile" data-smart-cam="west">
+            <img class="smart-cam-img" id="smart-cam-img-west" alt="CAM-04 West" />
+            <div class="smart-cam-overlay-label"><span class="cam-live-dot"></span>CAM-04 · WEST <span class="smart-cam-ts" id="smart-cam-ts-west"></span></div>
+          </div>
+        </div>
+        <!-- Per-camera detection count strip -->
+        <div class="smart-cam-stats-strip">
+          <div class="smart-cam-stat-col">
+            <div class="smart-cam-stat-head">CAM-01 · North</div>
+            <div class="smart-cam-stat-row" id="smart-det-north"><span>Total —</span><span>Cars —</span><span>Bus —</span><span>Truck —</span></div>
+          </div>
+          <div class="smart-cam-stat-col">
+            <div class="smart-cam-stat-head">CAM-02 · South</div>
+            <div class="smart-cam-stat-row" id="smart-det-south"><span>Total —</span><span>Cars —</span><span>Bus —</span><span>Truck —</span></div>
+          </div>
+          <div class="smart-cam-stat-col">
+            <div class="smart-cam-stat-head">CAM-03 · East</div>
+            <div class="smart-cam-stat-row" id="smart-det-east"><span>Total —</span><span>Cars —</span><span>Bus —</span><span>Truck —</span></div>
+          </div>
+          <div class="smart-cam-stat-col">
+            <div class="smart-cam-stat-head">CAM-04 · West</div>
+            <div class="smart-cam-stat-row" id="smart-det-west"><span>Total —</span><span>Cars —</span><span>Bus —</span><span>Truck —</span></div>
+          </div>
+        </div>
+      </article>
+
+      <div class="smart-grid smart-grid-bottom">
+        <article class="smart-card">
+          <div class="smart-card-title">Vehicle Breakdown</div>
+          <div class="smart-key-list" id="smart-vehicle-breakdown"></div>
+        </article>
+        <article class="smart-card">
+          <div class="smart-card-title">Signal Timing</div>
+          <div class="smart-timing-row">
+            <div class="smart-timing-head"><span>North–South</span><strong id="smart-timing-ns">4s</strong></div>
+            <div class="smart-progress"><span id="smart-bar-ns" style="width:32%"></span></div>
+          </div>
+          <div class="smart-timing-row">
+            <div class="smart-timing-head"><span>East–West</span><strong id="smart-timing-ew">4s</strong></div>
+            <div class="smart-progress smart-progress-warm"><span id="smart-bar-ew" style="width:28%"></span></div>
+          </div>
+        </article>
+        <article class="smart-card">
+          <div class="smart-card-title">Environmental</div>
+          <div class="smart-key-list">
+            <div class="smart-key-item"><span>Visibility</span><strong id="smart-visibility">0.0</strong></div>
+            <div class="smart-key-item"><span>Weather</span><strong id="smart-weather-text">Sunny</strong></div>
+            <div class="smart-key-item"><span>Temperature</span><strong id="smart-temperature">0.0 C</strong></div>
+            <div class="smart-key-item"><span>Wind</span><strong id="smart-wind">0.0 mph</strong></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- ── VIEW: analytics ───────────────────────────────────────── -->
+    <section class="smart-view" data-smart-panel="analytics">
+      <div class="smart-analytics-toolbar">
+        <button class="is-active">Last 24H</button>
+        <button>Last Week</button>
+        <button>Last Month</button>
+      </div>
+
+      <div class="smart-grid smart-grid-analytics-top">
+        <article class="smart-card">
+          <div class="smart-card-eyebrow">SimToll · 22 detectors · 15-min resolution</div>
+          <div class="smart-card-title">Traffic Volume</div>
+          <div class="smart-volume-head">
+            <div><strong id="smart-analytics-volume">609</strong><span>Current Volume</span></div>
+            <div><strong id="smart-analytics-congestion">12%</strong><span>Congestion</span></div>
+          </div>
+          <div class="smart-chart-placeholder" id="smart-traffic-volume-chart"></div>
+        </article>
+
+        <article class="smart-card">
+          <div class="smart-card-eyebrow">Linear-trend forecasting · real corridor data</div>
+          <div class="smart-card-title">Predictive Analytics</div>
+          <div class="smart-predictive-list" style="margin-top:14px">
+            <div class="smart-prediction-item">
+              <div class="smart-prediction-head"><span>Loading…</span><strong>—</strong></div>
+              <p>Loading real data…</p>
+              <div class="smart-progress"><span style="width:0%"></span></div>
+            </div>
+            <div class="smart-prediction-item">
+              <div class="smart-prediction-head"><span>Loading…</span><strong>—</strong></div>
+              <p>Loading real data…</p>
+              <div class="smart-progress smart-progress-warn"><span style="width:0%"></span></div>
+            </div>
+            <div class="smart-prediction-item">
+              <div class="smart-prediction-head"><span>Loading…</span><strong>—</strong></div>
+              <p>Loading real data…</p>
+              <div class="smart-progress"><span style="width:0%"></span></div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <!-- ── Real data: per-corridor forecast ── -->
+      <article class="smart-card">
+        <div class="smart-card-head">
+          <div>
+            <div class="smart-card-eyebrow">LightGBM gradient-boosting · real Google Maps corridor data</div>
+            <div class="smart-card-title">Short-Term Corridor Forecast</div>
+          </div>
+          <span class="smart-chip">Real Data</span>
+        </div>
+        <div id="ws-forecast-model-badge" style="font-size:0.72rem;letter-spacing:.04em;margin-bottom:.6rem;opacity:.85">Loading model…</div>
+        <div id="ws-forecast-panel" class="ws-forecast-grid">
+          <div class="ws-fc-loading">Loading corridor data…</div>
+        </div>
+      </article>
+
+      <!-- ── Real data: 24-h speed profile chart ── -->
+      <article class="smart-card">
+        <div class="smart-card-head">
+          <div>
+            <div class="smart-card-eyebrow">All 4 corridors · 30-min resolution · Google Maps data</div>
+            <div class="smart-card-title">24-Hour Speed Profile — Wadi Saqra</div>
+          </div>
+          <span class="smart-chip">Real Data</span>
+        </div>
+        <div style="position:relative;height:220px;">
+          <canvas id="ws-corridor-chart"></canvas>
+        </div>
+      </article>
+
+      <article class="smart-card">
+        <div class="smart-card-head">
+          <div>
+            <div class="smart-card-eyebrow">Derived from real corridor congestion ratios</div>
+            <div class="smart-card-title">Peak Traffic Analysis</div>
+          </div>
+          <div class="smart-analytics-toggle">
+            <button class="is-active">Today</button>
+            <button>Tomorrow</button>
+            <button>This Week</button>
+          </div>
+        </div>
+        <div class="smart-peak-list">
+          <div class="smart-peak-item">
+            <div class="smart-peak-copy"><strong>Early Morning</strong><span>05:00 – 06:30</span></div>
+            <div class="smart-progress"><span style="width:25%"></span></div>
+            <strong class="smart-peak-score">25%</strong>
+          </div>
+          <div class="smart-peak-item is-hot">
+            <div class="smart-peak-copy"><strong>Morning Rush</strong><span>07:30 – 09:00</span></div>
+            <div class="smart-progress smart-progress-danger"><span style="width:85%"></span></div>
+            <strong class="smart-peak-score">85%</strong>
+          </div>
+          <div class="smart-peak-item">
+            <div class="smart-peak-copy"><strong>Lunch Period</strong><span>12:00 – 13:30</span></div>
+            <div class="smart-progress smart-progress-warn"><span style="width:65%"></span></div>
+            <strong class="smart-peak-score">65%</strong>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ── VIEW: phase2 ──────────────────────────────────────────── -->
+    <section class="smart-view" data-smart-panel="phase2">
+
+      <!-- Hero banner -->
+      <div class="p2-hero">
+        <div class="p2-hero-left">
+          <div class="p2-hero-eyebrow">Phase 2 · Crack-the-Code · INT-001 · Wadi Saqra</div>
+          <h2 class="p2-hero-title">Architecture &amp; Feasibility Build</h2>
+          <p class="p2-hero-desc">Proving technical feasibility with <strong>real data</strong> — detector counts, signal timing logs, ground-truth annotation windows, and live CCTV streams from the WTS dataset.</p>
+        </div>
+        <div class="p2-hero-chips">
+          <span class="p2-chip p2-chip-cyan">De-risking Phase</span>
+          <span class="p2-chip p2-chip-purple">7 Build Modules</span>
+          <span class="p2-chip p2-chip-green">Read-Only · Isolated</span>
+          <span id="p2-data-badge" class="p2-chip p2-chip-purple" style="margin-top:4px">⟳ Loading real data…</span>
+        </div>
+      </div>
+
+      <!-- Loading indicator -->
+      <div id="p2-loading" style="display:none;align-items:center;gap:10px;color:var(--muted);font-size:13px;padding:8px 0">
+        <div class="spin-ring" style="width:16px;height:16px;border-width:2px"></div>
+        Loading real data from CSV / JSON files…
+      </div>
+
+      <!-- ── 7.1 Architecture ── -->
+      <div class="p2-section-label">
+        <span class="p2-num">7.1</span>
+        <div><div class="p2-section-title">Architecture Design</div><div class="p2-section-sub">Modular system blueprint · all core modules mapped</div></div>
+        <span class="smart-chip">Required</span>
+      </div>
+      <div class="p2-arch-grid">
+        <div class="p2-arch-module p2-arch-input">
+          <div class="p2-arch-head">Data Sources</div>
+          <div class="p2-arch-items">
+            <span>WTS Video (sense01/02)</span>
+            <span>SimToll Detector CSV</span>
+            <span>Signal Timing CSV</span>
+            <span>TrackLab Annotations</span>
+          </div>
+        </div>
+        <div class="p2-arch-arrow">→</div>
+        <div class="p2-arch-module p2-arch-acq">
+          <div class="p2-arch-head">7.2 Acquisition Layer</div>
+          <div class="p2-arch-items">
+            <span>CCTV Ingestion (Flask)</span>
+            <span>Frame Decoder (OpenCV)</span>
+            <span>CSV Normalizer</span>
+            <span>Timestamp Standardiser</span>
+          </div>
+        </div>
+        <div class="p2-arch-arrow">→</div>
+        <div class="p2-arch-module p2-arch-ai">
+          <div class="p2-arch-head">7.3 AI Detection</div>
+          <div class="p2-arch-items">
+            <span>YOLO Object Detection</span>
+            <span>ByteTrack MOT</span>
+            <span>Incident Classifier</span>
+            <span>Event Logger</span>
+          </div>
+        </div>
+        <div class="p2-arch-arrow">→</div>
+        <div class="p2-arch-module p2-arch-fcst">
+          <div class="p2-arch-head">7.4 Forecasting</div>
+          <div class="p2-arch-items">
+            <span>LSTM Model</span>
+            <span>Gradient Boosting</span>
+            <span>15/30/60-min Output</span>
+            <span>Demand Aggregator</span>
+          </div>
+        </div>
+        <div class="p2-arch-arrow">→</div>
+        <div class="p2-arch-module p2-arch-sig">
+          <div class="p2-arch-head">7.5 Signal Optimisation</div>
+          <div class="p2-arch-items">
+            <span>Phase Recommender</span>
+            <span>Cycle Length Advisor</span>
+            <span>Human-approval Gate</span>
+          </div>
+        </div>
+        <div class="p2-arch-arrow">→</div>
+        <div class="p2-arch-module p2-arch-dash">
+          <div class="p2-arch-head">7.6 Dashboard</div>
+          <div class="p2-arch-items">
+            <span>CityFlow Frontend</span>
+            <span>Chart.js · PixiJS</span>
+            <span>Incident Alerts</span>
+            <span>System Health</span>
+          </div>
+        </div>
+      </div>
+      <div class="p2-arch-storage-row">
+        <div class="p2-arch-module p2-arch-storage" style="flex:1">
+          <div class="p2-arch-head">Storage &amp; Logging Layer</div>
+          <div class="p2-arch-items" style="flex-direction:row;flex-wrap:wrap;gap:8px">
+            <span>sandbox_data/ (CSV + JSON)</span>
+            <span>TrackLab annotation files</span>
+            <span>Ground truth validation</span>
+            <span>Historical manifest</span>
+          </div>
+        </div>
+        <div class="p2-arch-module p2-arch-security" style="flex:1">
+          <div class="p2-arch-head">7.7 Security · Isolation (Figure B)</div>
+          <div class="p2-arch-items" style="flex-direction:row;flex-wrap:wrap;gap:8px">
+            <span>Read-only source access</span>
+            <span>No write to operational systems</span>
+            <span>Authorized users only</span>
+            <span>Isolated from signal control</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 7.2 Data Acquisition ── -->
+      <div class="p2-section-label">
+        <span class="p2-num">7.2</span>
+        <div><div class="p2-section-title">Data Acquisition Layer</div><div class="p2-section-sub">Real ingestion stats computed live from sandbox_data/detector_counts_15min.csv</div></div>
+        <span class="smart-chip smart-chip-green">✓ Built</span>
+      </div>
+      <div class="p2-section-grid">
+        <article class="smart-card p2-card">
+          <div class="smart-card-eyebrow">Detector CSV · SimToll + synthetic</div>
+          <div class="smart-card-title">Ingestion Statistics</div>
+          <div class="p2-stat-grid" style="margin-top:14px">
+            <div class="p2-stat"><span>Total Records</span><strong id="p2-acq-det-records">—</strong></div>
+            <div class="p2-stat"><span>Unique Timestamps</span><strong id="p2-acq-timestamps">—</strong></div>
+            <div class="p2-stat"><span>Detectors</span><strong id="p2-acq-detectors">—</strong></div>
+            <div class="p2-stat"><span>Signal Events</span><strong id="p2-acq-sig-records">—</strong></div>
+            <div class="p2-stat"><span>Approaches</span><strong id="p2-acq-approaches" style="font-size:11px">—</strong></div>
+            <div class="p2-stat"><span>Missing Records</span><strong id="p2-acq-missing" style="color:var(--yellow)">—</strong></div>
+          </div>
+          <div class="p2-stat-row" style="margin-top:12px">
+            <span class="p2-stat-label">Sources:</span>
+            <span id="p2-acq-sources" style="color:var(--muted);font-size:11px">—</span>
+          </div>
+          <div class="p2-stat-row">
+            <span class="p2-stat-label">Start:</span>
+            <code id="p2-acq-start" style="font-size:11px">—</code>
+          </div>
+          <div class="p2-stat-row">
+            <span class="p2-stat-label">End:</span>
+            <code id="p2-acq-end" style="font-size:11px">—</code>
+          </div>
+        </article>
+        <article class="smart-card p2-card">
+          <div class="smart-card-eyebrow">24-hour vehicle volume · all detectors</div>
+          <div class="smart-card-title">Detector Volume Timeline</div>
+          <div style="height:140px;margin-top:12px"><canvas id="p2-acq-sparkline"></canvas></div>
+          <div class="smart-card-eyebrow" style="margin-top:16px">Active CCTV Streams</div>
+          <div id="p2-acq-streams" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+            <div class="p2-stream-row"><span class="p2-out-dot" style="background:#22d97a"></span><strong>CAM-01 NORTH</strong><span>:8010</span><span class="p2-tag p2-tag-on" style="margin-left:auto">10 FPS</span></div>
+            <div class="p2-stream-row"><span class="p2-out-dot" style="background:#22d97a"></span><strong>CAM-02 SOUTH</strong><span>:8011</span><span class="p2-tag p2-tag-on" style="margin-left:auto">10 FPS</span></div>
+            <div class="p2-stream-row"><span class="p2-out-dot" style="background:#22d97a"></span><strong>CAM-03 EAST</strong><span>:8012</span><span class="p2-tag p2-tag-on" style="margin-left:auto">8 FPS</span></div>
+            <div class="p2-stream-row"><span class="p2-out-dot" style="background:#22d97a"></span><strong>CAM-04 WEST</strong><span>:8013</span><span class="p2-tag p2-tag-on" style="margin-left:auto">12 FPS</span></div>
+          </div>
+        </article>
+      </div>
+
+      <!-- ── 7.3 Incident Detection ── -->
+      <div class="p2-section-label">
+        <span class="p2-num">7.3</span>
+        <div><div class="p2-section-title">Real-Time Incident Detection</div><div class="p2-section-sub">Ground truth windows from ground_truth_validation.json · 29,927 vehicle detections</div></div>
+        <span class="smart-chip">Quick Build</span>
+      </div>
+      <div class="p2-section-grid">
+        <article class="smart-card p2-card">
+          <div class="smart-card-eyebrow">WTS annotations · VAL-001 → VAL-005</div>
+          <div class="smart-card-title">Ground Truth Event Windows</div>
+          <div class="p2-stat-grid" style="margin-top:14px">
+            <div class="p2-stat"><span>Total Vehicle Detections</span><strong id="p2-inc-total-det">—</strong></div>
+            <div class="p2-stat"><span>Validation Windows</span><strong id="p2-inc-windows">—</strong></div>
+            <div class="p2-stat"><span>Precision</span><strong id="p2-inc-precision" style="color:var(--green)">—</strong></div>
+            <div class="p2-stat"><span>Recall</span><strong id="p2-inc-recall" style="color:var(--green)">—</strong></div>
+          </div>
+          <div style="margin-top:14px">
+            <div class="p2-stat-row"><span class="p2-stat-label">Precision</span></div>
+            <div class="smart-progress" style="margin-top:4px"><span id="p2-inc-prec-bar" style="width:0%"></span></div>
+            <div class="p2-stat-row" style="margin-top:8px"><span class="p2-stat-label">Recall</span></div>
+            <div class="smart-progress" style="margin-top:4px"><span id="p2-inc-rec-bar" style="width:0%"></span></div>
+          </div>
+          <div style="height:140px;margin-top:16px"><canvas id="p2-inc-label-chart"></canvas></div>
+        </article>
+        <article class="smart-card p2-card" style="overflow:hidden">
+          <div class="smart-card-eyebrow">Structured event output · real annotations</div>
+          <div class="smart-card-title">Event Log</div>
+          <div class="p2-table-wrap" style="margin-top:12px">
+            <table class="p2-table">
+              <thead><tr><th>ID</th><th>Video</th><th>Time (s)</th><th>Frames</th><th>Labels</th><th>Notes</th></tr></thead>
+              <tbody id="p2-inc-events"></tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+
+      <!-- ── 7.4 Forecasting ── -->
+      <div class="p2-section-label">
+        <span class="p2-num">7.4</span>
+        <div><div class="p2-section-title">Traffic Flow Forecasting</div><div class="p2-section-sub">Rolling-window predictions from 2,114 rows of real 15-min detector data</div></div>
+        <span class="smart-chip">Quick Build</span>
+      </div>
+      <div class="p2-section-grid p2-section-grid-3">
+        <article class="smart-card p2-card" style="grid-column:span 2">
+          <div class="smart-card-eyebrow">Actual 24-h vehicle volume · all detectors · INT-001</div>
+          <div class="smart-card-title">Demand Time-Series</div>
+          <div style="height:160px;margin-top:12px"><canvas id="p2-fcst-actual-chart"></canvas></div>
+          <div class="p2-stat-grid" style="margin-top:14px">
+            <div class="p2-stat"><span>Forecast +15 min</span><strong id="p2-fcst-15min" style="color:var(--accent)">—</strong></div>
+            <div class="p2-stat"><span>Forecast +30 min</span><strong id="p2-fcst-30min" style="color:var(--accent2)">—</strong></div>
+            <div class="p2-stat"><span>Forecast +60 min</span><strong id="p2-fcst-60min" style="color:var(--yellow)">—</strong></div>
+            <div class="p2-stat"><span>Peak Time</span><strong id="p2-fcst-peak-time">—</strong></div>
+            <div class="p2-stat"><span>Peak Volume</span><strong id="p2-fcst-peak-vol">—</strong></div>
+          </div>
+        </article>
+        <article class="smart-card p2-card">
+          <div class="smart-card-eyebrow">Avg volume per approach</div>
+          <div class="smart-card-title">Approach Demand</div>
+          <div style="height:120px;margin-top:12px"><canvas id="p2-fcst-approach-chart"></canvas></div>
+          <div class="smart-card-eyebrow" style="margin-top:16px">Time-of-Day Buckets</div>
+          <div style="height:100px;margin-top:8px"><canvas id="p2-fcst-tod-chart"></canvas></div>
+        </article>
+      </div>
+
+      <!-- ── 7.5 Signal Optimization ── -->
+      <div class="p2-section-label">
+        <span class="p2-num">7.5</span>
+        <div><div class="p2-section-title">Signal Optimization Support</div><div class="p2-section-sub">Computed from 7,701 real signal timing events · decision support only</div></div>
+        <span class="smart-chip smart-chip-red">Read-Only</span>
+      </div>
+      <div class="p2-section-grid">
+        <article class="smart-card p2-card">
+          <div class="smart-card-eyebrow">Real phase durations from signal_timing_log.csv</div>
+          <div class="smart-card-title">Phase Timing Analysis</div>
+          <div class="p2-stat-grid" style="margin-top:14px">
+            <div class="p2-stat"><span>Avg Cycle Length</span><strong id="p2-sig-cycle">—</strong></div>
+            <div class="p2-stat"><span>Total Events</span><strong id="p2-sig-total-events">—</strong></div>
+          </div>
+          <div class="p2-phase-table" style="margin-top:14px">
+            <div class="p2-phase-row"><span>Phase 1</span><div class="p2-phase-vals"><span>avg: <strong id="p2-sig-p1-avg">—</strong></span><span>max: <strong id="p2-sig-p1-max">—</strong></span><span>min: <strong id="p2-sig-p1-min">—</strong></span></div></div>
+            <div class="p2-phase-row"><span>Phase 2</span><div class="p2-phase-vals"><span>avg: <strong id="p2-sig-p2-avg">—</strong></span><span>max: <strong id="p2-sig-p2-max">—</strong></span><span>min: <strong id="p2-sig-p2-min">—</strong></span></div></div>
+            <div class="p2-phase-row"><span>Phase 3</span><div class="p2-phase-vals"><span>avg: <strong id="p2-sig-p3-avg">—</strong></span><span>max: <strong id="p2-sig-p3-max">—</strong></span><span>min: <strong id="p2-sig-p3-min">—</strong></span></div></div>
+            <div class="p2-phase-row"><span>Phase 4</span><div class="p2-phase-vals"><span>avg: <strong id="p2-sig-p4-avg">—</strong></span><span>max: <strong id="p2-sig-p4-max">—</strong></span><span>min: <strong id="p2-sig-p4-min">—</strong></span></div></div>
+          </div>
+          <div class="p2-state-bars" style="margin-top:16px">
+            <div class="p2-state-row"><span>GREEN</span><span id="p2-sig-green-pct">—</span><div class="smart-progress" style="flex:1"><span id="p2-sig-green-bar" style="width:0%;background:var(--green)"></span></div></div>
+            <div class="p2-state-row"><span>YELLOW</span><span id="p2-sig-yellow-pct">—</span><div class="smart-progress" style="flex:1"><span id="p2-sig-yellow-bar" style="width:0%;background:var(--yellow)"></span></div></div>
+            <div class="p2-state-row"><span>RED</span><span id="p2-sig-red-pct">—</span><div class="smart-progress" style="flex:1"><span id="p2-sig-red-bar" style="width:0%;background:var(--red)"></span></div></div>
+          </div>
+        </article>
+        <article class="smart-card p2-card">
+          <div class="smart-card-eyebrow">AI-generated · human approval required</div>
+          <div class="smart-card-title">Signal Recommendations</div>
+          <div id="p2-sig-recommendations" style="margin-top:14px;display:flex;flex-direction:column;gap:10px"></div>
+          <div style="height:130px;margin-top:16px"><canvas id="p2-sig-mode-chart"></canvas></div>
+        </article>
+      </div>
+
+      <!-- ── 7.6 Dashboard Health ── -->
+      <div class="p2-section-label">
+        <span class="p2-num">7.6</span>
+        <div><div class="p2-section-title">Dashboard Quick Build</div><div class="p2-section-sub">System health indicators — ingestion rate, dropped frames, stream uptime</div></div>
+        <span class="smart-chip smart-chip-green">✓ Live</span>
+      </div>
+      <div class="p2-section-grid p2-section-grid-3">
+        <article class="smart-card p2-card">
+          <div class="p2-stat-grid">
+            <div class="p2-stat"><span>Ingestion Rate</span><strong id="p2-dash-ingest-rate">—</strong></div>
+            <div class="p2-stat"><span>Dropped Frames</span><strong id="p2-dash-dropped-frames" style="color:var(--yellow)">—</strong></div>
+            <div class="p2-stat"><span>Stream Uptime</span><strong id="p2-dash-stream-uptime" style="color:var(--green)">—</strong></div>
+            <div class="p2-stat"><span>Signal Log</span><strong id="p2-dash-sig-completeness">—</strong></div>
+            <div class="p2-stat"><span>Data Loss</span><strong id="p2-dash-data-loss" style="color:var(--yellow)">—</strong></div>
+            <div class="p2-stat"><span>Reconnect Policy</span><strong id="p2-dash-reconnect" style="font-size:11px">—</strong></div>
+          </div>
+        </article>
+        <article class="smart-card p2-card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px">
+          <div class="smart-card-eyebrow">Overall system health</div>
+          <div id="p2-dash-gauge-ring" class="smart-gauge-ring" style="width:130px;height:130px">
+            <div class="smart-gauge-inner" style="width:95px;height:95px">
+              <strong id="p2-dash-health-pct" style="font-size:20px">—</strong>
+              <span>Health</span>
+            </div>
+          </div>
+          <div class="p2-stat-row"><span class="p2-stat-label">Data Loss</span></div>
+          <div class="smart-progress" style="width:100%"><span id="p2-dash-loss-bar" style="width:0%;background:var(--yellow)"></span></div>
+        </article>
+        <article class="smart-card p2-card">
+          <div class="smart-card-eyebrow">Live capabilities verified</div>
+          <div class="smart-card-title" style="font-size:14px">Dashboard Features</div>
+          <div class="p2-tag-grid" style="margin-top:12px">
+            <span class="p2-tag p2-tag-on">Real-time video · AI overlays</span>
+            <span class="p2-tag p2-tag-on">Incident alerts &amp; event logs</span>
+            <span class="p2-tag p2-tag-on">Traffic flow visualization</span>
+            <span class="p2-tag p2-tag-on">Short-term forecasts</span>
+            <span class="p2-tag p2-tag-on">Signal timing recommendations</span>
+            <span class="p2-tag p2-tag-on">Historical performance</span>
+            <span class="p2-tag">System health indicators</span>
+          </div>
+        </article>
+      </div>
+
+      <!-- ── 7.7 Security ── -->
+      <div class="p2-section-label">
+        <span class="p2-num">7.7</span>
+        <div><div class="p2-section-title">Security &amp; Isolation</div><div class="p2-section-sub">Figure B isolation model · read-only · non-intrusive</div></div>
+        <span class="smart-chip smart-chip-red">Critical</span>
+      </div>
+      <div class="p2-section-grid">
+        <article class="smart-card p2-card">
+          <div class="smart-card-eyebrow">Loaded from intersection_metadata.json</div>
+          <div class="smart-card-title">Site Identity</div>
+          <div class="p2-stat-row" style="margin-top:12px"><span class="p2-stat-label">Intersection</span><span id="p2-sec-intersection" style="color:var(--text);font-size:12px">—</span></div>
+          <div class="p2-stat-row"><span class="p2-stat-label">Camera</span><span id="p2-sec-camera" style="color:var(--text);font-size:12px">—</span></div>
+          <div class="p2-stat-row"><span class="p2-stat-label">Stream URL</span><code id="p2-sec-stream-url" style="font-size:11px">—</code></div>
+          <div class="p2-stat-row"><span class="p2-stat-label">Coordinates</span><span id="p2-sec-coord" style="color:var(--muted);font-size:11px">—</span></div>
+          <div class="p2-tag-grid" style="margin-top:14px">
+            <span class="p2-tag p2-tag-on">Read-only source access</span>
+            <span class="p2-tag p2-tag-on">Non-intrusive to operational infra</span>
+            <span class="p2-tag p2-tag-on">Isolated from signal control</span>
+            <span class="p2-tag p2-tag-on">Authorized users only</span>
+            <span class="p2-tag p2-tag-on">Secure data &amp; log handling</span>
+          </div>
+        </article>
+        <article class="smart-card p2-card" style="overflow:hidden">
+          <div class="smart-card-eyebrow">methodology_note.md</div>
+          <div class="smart-card-title">Methodology Note</div>
+          <pre id="p2-sec-methodology" style="margin-top:12px;font-size:11px;color:var(--muted);white-space:pre-wrap;line-height:1.6;max-height:220px;overflow-y:auto">Loading…</pre>
+        </article>
+      </div>
+
+      <!-- ── Benchmarks ── -->
+      <div class="p2-section-label">
+        <span class="p2-num">📊</span>
+        <div><div class="p2-section-title">Required Benchmarks</div><div class="p2-section-sub">Computed from real data — all results auto-populated</div></div>
+      </div>
+      <article class="smart-card p2-card">
+        <div class="p2-table-wrap">
+          <table class="p2-table" id="p2-bench-table"></table>
+        </div>
+      </article>
+
+    </section>
+
+    <!-- ── VIEW: settings ────────────────────────────────────────── -->
+    <section class="smart-view" data-smart-panel="settings">
+      <div class="smart-grid smart-grid-settings">
+        <article class="smart-card">
+          <div class="smart-card-eyebrow">Phase 2 · adaptive control</div>
+          <div class="smart-card-title">Signal Automation</div>
+          <div class="smart-setting-list" style="margin-top:16px">
+            <label class="smart-setting-item"><span>Adaptive timing enabled</span><input type="checkbox" checked></label>
+            <label class="smart-setting-item"><span>Emergency override alerts</span><input type="checkbox" checked></label>
+            <label class="smart-setting-item"><span>Night mode signal compression</span><input type="checkbox"></label>
+          </div>
+        </article>
+        <article class="smart-card">
+          <div class="smart-card-eyebrow">Alerting &amp; escalation</div>
+          <div class="smart-card-title">Notifications</div>
+          <div class="smart-setting-list" style="margin-top:16px">
+            <label class="smart-setting-item"><span>Push congestion alerts</span><input type="checkbox" checked></label>
+            <label class="smart-setting-item"><span>Operator escalation channel</span><input type="checkbox" checked></label>
+            <label class="smart-setting-item"><span>Daily analytics digest</span><input type="checkbox"></label>
+          </div>
+        </article>
+      </div>
+    </section>
+
+  </main>
+</div>
+
 <!-- Hidden stubs required by script.js ─────────────────────────── -->
 <span id="total-step-num"   style="display:none"></span>
 <span id="selected-entity"  style="display:none">None</span>
@@ -310,5 +1063,7 @@
 <script src="Point.js"></script>
 <script src="script.js"></script>
 <script src="dashboard.js"></script>
+<script src="phase2.js"></script>
+<script src="wadi_saqra_data.js"></script>
 </body>
 </html>
